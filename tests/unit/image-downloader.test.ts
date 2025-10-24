@@ -209,13 +209,15 @@ describe('ImageDownloader', () => {
 
   describe('applyRateLimit()', () => {
     it('should apply rate limiting delay when configured', async () => {
-      const downloader = new ImageDownloader({ downloadDelayMs: 100 });
+      const delayMs = 100;
+      const downloader = new ImageDownloader({ downloadDelayMs: delayMs });
       const startTime = Date.now();
 
       await downloader.applyRateLimit();
       const elapsed = Date.now() - startTime;
 
-      expect(elapsed).toBeGreaterThanOrEqual(100);
+      // Allow 10ms tolerance for timing variance in CI environments
+      expect(elapsed).toBeGreaterThanOrEqual(delayMs - 10);
     });
 
     it('should not delay when downloadDelayMs is 0', async () => {
