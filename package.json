@@ -12,7 +12,7 @@
     "dev": "tsc --watch",
     "lint": "eslint src tests --ext .ts",
     "lint:fix": "eslint src tests --ext .ts --fix",
-    "test": "vitest",
+    "test": "vitest run --coverage",
     "test:watch": "vitest --watch",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
