@@ -12,13 +12,47 @@ Reference: [TRANSITION.md](TRANSITION.md) contains the full implementation roadm
 
 ## Tech Stack
 
-- **Runtime**: Node.js >=18.0.0
+- **Runtime**: Node.js >=18.0.0 (using nvm for version management)
 - **Language**: TypeScript 5.0+ (target: ES2020, module: CommonJS)
 - **Build**: TypeScript compiler with incremental builds
 - **Testing**: Vitest with @vitest/ui dashboard
 - **Linting**: ESLint + @typescript-eslint
 - **CLI**: commander.js for argument parsing
 - **Package Manager**: npm (CommonJS, published to npm registry)
+
+## Environment Setup (IMPORTANT)
+
+This project uses **nvm** (Node Version Manager) to manage Node.js versions. Before running any npm or node commands, you MUST set the correct Node version:
+
+```bash
+# Set Node version from .node-version file
+nvm use $(cat .node-version)
+
+# Verify the correct version is active
+node --version  # Should show v24.4.0 (or the version in .node-version)
+npm --version   # Should show 11.6.0 or compatible
+```
+
+### Usage in Different Environments
+
+**For interactive terminal work (zsh recommended)**:
+- Your zsh shell should already have nvm properly initialized via your `.zshrc`
+- Simply run npm commands directly - nvm will automatically use the version from `.node-version`
+- This is the preferred way to work locally
+
+**For Claude Code automated tasks**:
+- Claude's bash environment doesn't persist nvm initialization across commands
+- Always chain commands with `&&` to keep nvm in the shell context
+- Pattern: `nvm use $(cat .node-version) && npm run build`
+- Example:
+  ```bash
+  # Good - nvm stays active for the npm command
+  nvm use $(cat .node-version) && npm run type-check && npm run build
+
+  # Avoid - nvm state is lost between separate commands
+  nvm use $(cat .node-version)
+  npm run build  # ❌ npm may not be found
+  ```
 
 ## Common Development Commands
 

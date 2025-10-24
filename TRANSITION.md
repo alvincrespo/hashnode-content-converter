@@ -237,23 +237,27 @@ Extract the conversion logic into a modular, well-typed TypeScript npm package (
 
 ### Phase 2: Type Definitions
 
-#### Step 2.1: Generate Hashnode Schema Types
-- Analyze current `export-articles.json` structure
-- Create `src/types/hashnode-schema.ts` with:
-  - `HashnodePost` interface (full schema)
-  - `PostMetadata` interface (subset of fields we use)
-  - `HashnodeExport` interface (root export structure)
-- Document which fields are used vs. which can be ignored
+#### Step 2.1: Generate Hashnode Schema Types ✅ COMPLETE (2025-10-24)
+- ✅ Analyzed current Hashnode export structure
+- ✅ Created `src/types/hashnode-schema.ts` with:
+  - ✅ `HashnodePost` interface (full schema with 18 fields)
+  - ✅ `PostMetadata` interface (subset of 6 fields used for conversion)
+  - ✅ `HashnodeExport` interface (root export structure)
+- ✅ All interfaces properly typed with optional fields marked
 
-#### Step 2.2: Create Converter Configuration Types
-- Create `src/types/converter-options.ts`:
-  - `ImageDownloadOptions` (retry count, delay, timeout)
-  - `LoggerConfig` (file path, verbosity)
-  - `ConversionOptions` (optional overrides)
-- Create `src/types/conversion-result.ts`:
-  - `ConversionResult` (stats, errors, 403s)
-  - `ConvertedPost` (converted post representation)
-  - `ConversionError` (structured error tracking)
+#### Step 2.2: Create Converter Configuration Types ✅ COMPLETE (2025-10-24)
+- ✅ Expanded `src/types/converter-options.ts`:
+  - ✅ `ImageDownloadOptions` (maxRetries, retryDelayMs, timeoutMs, downloadDelayMs)
+  - ✅ `LoggerConfig` (filePath, verbosity: quiet|normal|verbose)
+  - ✅ `ConversionOptions` (skipExisting, downloadOptions, loggerConfig)
+- ✅ Created `src/types/conversion-result.ts`:
+  - ✅ `ConversionResult` (moved from converter-options.ts)
+  - ✅ `ConvertedPost` (slug, title, outputPath, success, error)
+  - ✅ `ConversionError` (moved from converter-options.ts)
+- ✅ Updated imports in `src/converter.ts` for new type location
+- ✅ Added export of `conversion-result.ts` in `src/index.ts`
+- ✅ Type-check verification: PASS
+- ✅ Build verification: PASS
 
 ### Phase 3: Service Layer Implementation
 

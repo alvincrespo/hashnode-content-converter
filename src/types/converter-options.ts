@@ -1,16 +1,66 @@
-export interface ConversionOptions {
-  skipExisting?: boolean;
+/**
+ * Configuration options for downloading images
+ */
+export interface ImageDownloadOptions {
+  /**
+   * Maximum number of retry attempts for failed downloads.
+   * @default 3
+   */
+  maxRetries?: number;
+
+  /**
+   * Delay between retry attempts in milliseconds.
+   * @default 1000
+   */
+  retryDelayMs?: number;
+
+  /**
+   * HTTP request timeout in milliseconds.
+   * @default 30000
+   */
+  timeoutMs?: number;
+
+  /**
+   * Delay between sequential downloads (for rate limiting).
+   * @default 0
+   */
   downloadDelayMs?: number;
 }
 
-export interface ConversionError {
-  slug: string;
-  error: string;
+/**
+ * Configuration options for logging
+ */
+export interface LoggerConfig {
+  /**
+   * Optional file path for writing logs to disk.
+   * If not provided, logs are written to console only.
+   */
+  filePath?: string;
+
+  /**
+   * Verbosity level for logging output.
+   * @default 'normal'
+   */
+  verbosity?: 'quiet' | 'normal' | 'verbose';
 }
 
-export interface ConversionResult {
-  converted: number;
-  skipped: number;
-  errors: ConversionError[];
-  duration: string;
+/**
+ * Configuration options for the conversion process
+ */
+export interface ConversionOptions {
+  /**
+   * Skip posts that already exist in the output directory.
+   * @default false
+   */
+  skipExisting?: boolean;
+
+  /**
+   * Image download configuration options.
+   */
+  downloadOptions?: ImageDownloadOptions;
+
+  /**
+   * Logger configuration options.
+   */
+  loggerConfig?: LoggerConfig;
 }
