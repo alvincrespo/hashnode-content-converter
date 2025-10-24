@@ -1,12 +1,42 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as fs from 'fs';
 import * as https from 'https';
-import { Readable, Writable } from 'stream';
+import { EventEmitter } from 'events';
 import { ImageDownloader } from '../../src/services/image-downloader';
 
 // Mock modules
 vi.mock('https');
 vi.mock('fs');
+
+// Helper to create a mock HTTP response object (IncomingMessage)
+function createMockResponse(statusCode = 200, headers = {}) {
+  return {
+    statusCode,
+    headers,
+    pipe: vi.fn(),
+    on: vi.fn(),
+  } as any;
+}
+
+// Helper to create a mock file stream object (WriteStream)
+// Uses EventEmitter so emit() actually triggers listeners
+function createMockFileStream() {
+  const emitter = new EventEmitter();
+  return {
+    emit: (event: string, ...args: any[]) => emitter.emit(event, ...args),
+    on: (event: string, listener: any) => emitter.on(event, listener),
+    close: vi.fn(),
+    destroy: vi.fn(),
+  } as any;
+}
+
+// Helper to create a mock ClientRequest
+function createMockClientRequest() {
+  return {
+    on: vi.fn(),
+    destroy: vi.fn(),
+  } as any;
+}
 
 describe('ImageDownloader', () => {
   let downloader: ImageDownloader;
@@ -25,20 +55,10 @@ describe('ImageDownloader', () => {
       // Arrange
       const url = 'https://example.com/image.png';
       const filepath = '/tmp/image.png';
-      const mockResponse = new Readable() as any;
-      const mockFileStream = new Writable();
+      const mockFileStream = createMockFileStream();
 
       vi.mocked(https.get).mockImplementation((_urlArg, _options, callback) => {
-        Object.defineProperty(mockResponse, 'statusCode', {
-          value: 200,
-          writable: true,
-        });
-        Object.defineProperty(mockResponse, 'headers', {
-          value: {},
-          writable: true,
-        });
-
-        // Mock pipe to attach finish listener
+        const mockResponse = createMockResponse(200);
         mockResponse.pipe = vi.fn((dest) => {
           setTimeout(() => {
             mockFileStream.emit('finish');
@@ -46,14 +66,9 @@ describe('ImageDownloader', () => {
           return dest;
         });
 
-        mockFileStream.close = vi.fn();
-
         callback!(mockResponse);
 
-        return {
-          on: vi.fn(),
-          destroy: vi.fn(),
-        } as any;
+        return createMockClientRequest();
       });
 
       vi.mocked(fs.existsSync).mockReturnValue(false);
@@ -95,25 +110,11 @@ describe('ImageDownloader', () => {
       // Arrange
       const url = 'https://example.com/image.png';
       const filepath = '/tmp/image.png';
-      const mockResponse = new Readable() as any;
 
       vi.mocked(https.get).mockImplementation((_urlArg, _options, callback) => {
-        Object.defineProperty(mockResponse, 'statusCode', {
-          value: 403,
-          writable: true,
-        });
-        Object.defineProperty(mockResponse, 'headers', {
-          value: {},
-          writable: true,
-        });
-        mockResponse.on = vi.fn();
-
+        const mockResponse = createMockResponse(403);
         callback!(mockResponse);
-
-        return {
-          on: vi.fn(),
-          destroy: vi.fn(),
-        } as any;
+        return createMockClientRequest();
       });
 
       vi.mocked(fs.existsSync).mockReturnValue(false);
@@ -127,25 +128,11 @@ describe('ImageDownloader', () => {
       // Arrange
       const url = 'https://example.com/image.png';
       const filepath = '/tmp/image.png';
-      const mockResponse = new Readable() as any;
 
       vi.mocked(https.get).mockImplementation((_urlArg, _options, callback) => {
-        Object.defineProperty(mockResponse, 'statusCode', {
-          value: 404,
-          writable: true,
-        });
-        Object.defineProperty(mockResponse, 'headers', {
-          value: {},
-          writable: true,
-        });
-        mockResponse.on = vi.fn();
-
+        const mockResponse = createMockResponse(404);
         callback!(mockResponse);
-
-        return {
-          on: vi.fn(),
-          destroy: vi.fn(),
-        } as any;
+        return createMockClientRequest();
       });
 
       vi.mocked(fs.existsSync).mockReturnValue(false);
@@ -160,35 +147,14 @@ describe('ImageDownloader', () => {
       const url = 'https://example.com/image.png';
       const redirectUrl = 'https://cdn.example.com/image.png';
       const filepath = '/tmp/image.png';
-      const mockResponse = new Readable() as any;
-      const mockFileStream = new Writable();
+      const mockFileStream = createMockFileStream();
 
       vi.mocked(https.get).mockImplementation((urlArg, _options, callback) => {
-
         if (urlArg === url) {
-          // First call - return redirect
-          Object.defineProperty(mockResponse, 'statusCode', {
-            value: 301,
-            writable: true,
-            configurable: true,
-          });
-          Object.defineProperty(mockResponse, 'headers', {
-            value: { location: redirectUrl },
-            writable: true,
-            configurable: true,
-          });
+          const mockResponse = createMockResponse(301, { location: redirectUrl });
+          callback!(mockResponse);
         } else if (urlArg === redirectUrl) {
-          // Second call - return success
-          const successResponse = new Readable() as any;
-          Object.defineProperty(successResponse, 'statusCode', {
-            value: 200,
-            writable: true,
-          });
-          Object.defineProperty(successResponse, 'headers', {
-            value: {},
-            writable: true,
-          });
-
+          const successResponse = createMockResponse(200);
           successResponse.pipe = vi.fn((dest) => {
             setTimeout(() => {
               mockFileStream.emit('finish');
@@ -196,21 +162,10 @@ describe('ImageDownloader', () => {
             return dest;
           });
 
-          mockFileStream.close = vi.fn();
-
           callback!(successResponse);
-          return {
-            on: vi.fn(),
-            destroy: vi.fn(),
-          } as any;
         }
 
-        callback!(mockResponse);
-
-        return {
-          on: vi.fn(),
-          destroy: vi.fn(),
-        } as any;
+        return createMockClientRequest();
       });
 
       vi.mocked(fs.existsSync).mockReturnValue(false);
@@ -229,34 +184,14 @@ describe('ImageDownloader', () => {
       const url = 'https://example.com/image.png';
       const redirectUrl = 'https://cdn.example.com/image.png';
       const filepath = '/tmp/image.png';
-      const mockResponse = new Readable() as any;
-      const mockFileStream = new Writable();
+      const mockFileStream = createMockFileStream();
 
       vi.mocked(https.get).mockImplementation((urlArg, _options, callback) => {
         if (urlArg === url) {
-          // First call - return redirect
-          Object.defineProperty(mockResponse, 'statusCode', {
-            value: 302,
-            writable: true,
-            configurable: true,
-          });
-          Object.defineProperty(mockResponse, 'headers', {
-            value: { location: redirectUrl },
-            writable: true,
-            configurable: true,
-          });
+          const mockResponse = createMockResponse(302, { location: redirectUrl });
+          callback!(mockResponse);
         } else if (urlArg === redirectUrl) {
-          // Second call - return success
-          const successResponse = new Readable() as any;
-          Object.defineProperty(successResponse, 'statusCode', {
-            value: 200,
-            writable: true,
-          });
-          Object.defineProperty(successResponse, 'headers', {
-            value: {},
-            writable: true,
-          });
-
+          const successResponse = createMockResponse(200);
           successResponse.pipe = vi.fn((dest) => {
             setTimeout(() => {
               mockFileStream.emit('finish');
@@ -264,21 +199,10 @@ describe('ImageDownloader', () => {
             return dest;
           });
 
-          mockFileStream.close = vi.fn();
-
           callback!(successResponse);
-          return {
-            on: vi.fn(),
-            destroy: vi.fn(),
-          } as any;
         }
 
-        callback!(mockResponse);
-
-        return {
-          on: vi.fn(),
-          destroy: vi.fn(),
-        } as any;
+        return createMockClientRequest();
       });
 
       vi.mocked(fs.existsSync).mockReturnValue(false);
@@ -296,19 +220,10 @@ describe('ImageDownloader', () => {
       // Arrange
       const url = 'https://example.com/image.png';
       const filepath = '/tmp/subdir/image.png';
-      const mockResponse = new Readable() as any;
-      const mockFileStream = new Writable();
+      const mockFileStream = createMockFileStream();
 
       vi.mocked(https.get).mockImplementation((_urlArg, _options, callback) => {
-        Object.defineProperty(mockResponse, 'statusCode', {
-          value: 200,
-          writable: true,
-        });
-        Object.defineProperty(mockResponse, 'headers', {
-          value: {},
-          writable: true,
-        });
-
+        const mockResponse = createMockResponse(200);
         mockResponse.pipe = vi.fn((dest) => {
           setTimeout(() => {
             mockFileStream.emit('finish');
@@ -316,14 +231,9 @@ describe('ImageDownloader', () => {
           return dest;
         });
 
-        mockFileStream.close = vi.fn();
-
         callback!(mockResponse);
 
-        return {
-          on: vi.fn(),
-          destroy: vi.fn(),
-        } as any;
+        return createMockClientRequest();
       });
 
       vi.mocked(fs.existsSync).mockReturnValue(false);
@@ -369,19 +279,10 @@ describe('ImageDownloader', () => {
       // Arrange
       const url = 'https://example.com/image.png';
       const filepath = '/tmp/image.png';
-      const mockResponse = new Readable() as any;
-      const mockFileStream = new Writable();
+      const mockFileStream = createMockFileStream();
 
       vi.mocked(https.get).mockImplementation((_urlArg, _options, callback) => {
-        Object.defineProperty(mockResponse, 'statusCode', {
-          value: 200,
-          writable: true,
-        });
-        Object.defineProperty(mockResponse, 'headers', {
-          value: {},
-          writable: true,
-        });
-
+        const mockResponse = createMockResponse(200);
         mockResponse.pipe = vi.fn(() => {
           setTimeout(() => {
             mockFileStream.emit('error', new Error('Write failed'));
@@ -391,10 +292,7 @@ describe('ImageDownloader', () => {
 
         callback!(mockResponse);
 
-        return {
-          on: vi.fn(),
-          destroy: vi.fn(),
-        } as any;
+        return createMockClientRequest();
       });
 
       vi.mocked(fs.existsSync).mockReturnValue(false);
@@ -552,8 +450,7 @@ describe('ImageDownloader', () => {
       const filepath = '/tmp/image.png';
       const downloader = new ImageDownloader({ maxRetries: 2, retryDelayMs: 10 });
       let attemptCount = 0;
-      const mockResponse = new Readable() as any;
-      const mockFileStream = new Writable();
+      const mockFileStream = createMockFileStream();
 
       vi.mocked(https.get).mockImplementation((_urlArg, _options, callback) => {
         attemptCount++;
@@ -571,15 +468,7 @@ describe('ImageDownloader', () => {
           } as any;
         }
 
-        Object.defineProperty(mockResponse, 'statusCode', {
-          value: 200,
-          writable: true,
-        });
-        Object.defineProperty(mockResponse, 'headers', {
-          value: {},
-          writable: true,
-        });
-
+        const mockResponse = createMockResponse(200);
         mockResponse.pipe = vi.fn((dest) => {
           setTimeout(() => {
             mockFileStream.emit('finish');
@@ -587,14 +476,9 @@ describe('ImageDownloader', () => {
           return dest;
         });
 
-        mockFileStream.close = vi.fn();
-
         callback!(mockResponse);
 
-        return {
-          on: vi.fn(),
-          destroy: vi.fn(),
-        } as any;
+        return createMockClientRequest();
       });
 
       vi.mocked(fs.existsSync).mockReturnValue(false);
