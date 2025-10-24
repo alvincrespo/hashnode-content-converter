@@ -17,6 +17,8 @@
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
     "type-check": "tsc --noEmit",
+    "generate-issues": "npx ts-node scripts/generate-issues.ts",
+    "generate-issues:dry": "npx ts-node scripts/generate-issues.ts --dry-run",
     "prepublishOnly": "npm run build && npm test"
   },
   "keywords": [
