@@ -5,7 +5,7 @@ export class Logger {
     this.logFilePath = logFilePath || '';
   }
 
-  info(message: string): void {}
+  info(_message: string): void {}
   close(): Promise<void> {
     return Promise.resolve();
   }

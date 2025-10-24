@@ -1,5 +1,5 @@
 export class ImageProcessor {
-  async process(markdown: string, blogDir: string): Promise<string> {
+  async process(_markdown: string, _blogDir: string): Promise<string> {
     throw new Error('Not implemented');
   }
 }
