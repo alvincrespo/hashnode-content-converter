@@ -233,6 +233,50 @@ npx @alvin/hashnode-content-converter convert --export ./export.json --output ./
 
 Build configuration excludes tests and uses [tsconfig.build.json](tsconfig.build.json).
 
+## Code Comments & Documentation
+
+### Commenting Philosophy
+
+**Comments should explain the "why" and "what's non-obvious", not restate the code.**
+
+**ADD comments when**:
+- Explaining non-obvious algorithmic choices
+- Clarifying why a certain error handling strategy was chosen
+- Documenting gotchas, edge cases, or side effects that aren't obvious
+- Adding business logic or domain knowledge needed to understand intent
+- Explaining performance considerations or tradeoffs
+
+**SKIP comments for**:
+- Simple boolean checks where variable names are self-explanatory
+- Standard control flow (if/else, loops)
+- What standard library functions do
+- Code that clearly states what it does
+
+**Example**:
+```typescript
+// Bad: Just restates what the code does
+if (result.is403) {
+  return result;
+}
+
+// Good: Explains why we don't retry
+// Don't retry on 403 - indicates the URL is permanently inaccessible
+// rather than a transient network failure, so further attempts are wasteful
+if (result.is403) {
+  return result;
+}
+```
+
+### JSDoc for Public APIs
+
+Use JSDoc for:
+- Public methods, functions, and interfaces
+- Complex configuration options
+- Return types and error conditions
+- Usage examples for non-obvious behavior
+
+Keep JSDoc concise but complete.
+
 ## Implementation Notes
 
 ### Design Patterns Used
