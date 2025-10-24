@@ -3,16 +3,19 @@ import { vi } from 'vitest';
 
 /**
  * Create a mock HTTP response object (IncomingMessage)
+ * Uses EventEmitter so emit() and on() actually work for testing error handlers
  * @param statusCode HTTP status code
  * @param headers Response headers object
- * @returns Mock response object with statusCode and headers
+ * @returns Mock response with statusCode, headers, and event emitting
  */
 export function createMockResponse(statusCode = 200, headers = {}) {
+  const emitter = new EventEmitter();
   return {
     statusCode,
     headers,
     pipe: vi.fn(),
-    on: vi.fn(),
+    emit: (event: string, ...args: any[]) => emitter.emit(event, ...args),
+    on: (event: string, listener: any) => emitter.on(event, listener),
   } as any;
 }
 

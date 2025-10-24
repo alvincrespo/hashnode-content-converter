@@ -118,6 +118,24 @@ describe('ImageDownloader', () => {
       expect(https.get).toHaveBeenCalled();
     });
 
+    it('should handle redirect without location header', async () => {
+      const url = 'https://example.com/image.png';
+      const filepath = '/tmp/image.png';
+
+      vi.mocked(https.get).mockImplementation((_urlArg, _options, callback) => {
+        const mockResponse = createMockResponse(301, {});
+        callback!(mockResponse);
+        return createMockClientRequest();
+      });
+
+      vi.mocked(fs.existsSync).mockReturnValue(false);
+      vi.mocked(fs.mkdirSync).mockImplementation(() => '');
+
+      await expect(downloader.download(url, filepath)).rejects.toThrow(
+        'Redirect without location header'
+      );
+    });
+
     it('should create parent directory if it does not exist', async () => {
       const url = 'https://example.com/image.png';
       const filepath = '/tmp/subdir/image.png';
@@ -173,6 +191,35 @@ describe('ImageDownloader', () => {
       vi.mocked(fs.unlinkSync).mockImplementation(() => {});
 
       await expect(downloader.download(url, filepath)).rejects.toThrow('File write error');
+      expect(fs.unlinkSync).toHaveBeenCalledWith(filepath);
+    });
+
+    it('should handle response stream error', async () => {
+      const url = 'https://example.com/image.png';
+      const filepath = '/tmp/image.png';
+      const mockFileStream = createMockFileStream();
+
+      vi.mocked(https.get).mockImplementation((_urlArg, _options, callback) => {
+        const mockResponse = createMockResponse(200);
+        mockResponse.pipe = vi.fn((dest) => {
+          return dest;
+        });
+
+        callback!(mockResponse);
+
+        setTimeout(() => {
+          mockResponse.emit('error', new Error('Stream error occurred'));
+        }, 5);
+
+        return createMockClientRequest();
+      });
+
+      vi.mocked(fs.existsSync).mockReturnValue(false);
+      vi.mocked(fs.mkdirSync).mockImplementation(() => '');
+      vi.mocked(fs.createWriteStream).mockReturnValue(mockFileStream as any);
+      vi.mocked(fs.unlinkSync).mockImplementation(() => {});
+
+      await expect(downloader.download(url, filepath)).rejects.toThrow('Stream error');
       expect(fs.unlinkSync).toHaveBeenCalledWith(filepath);
     });
   });
