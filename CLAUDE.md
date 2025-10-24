@@ -310,7 +310,20 @@ HTTP 403 errors should be tracked separately as they indicate permission issues 
 - **Integration Tests**: Test full pipeline with fixture data
 - **Fixtures**: [tests/fixtures/sample-hashnode-export.json](tests/fixtures/sample-hashnode-export.json) contains real-world example data
 
-Current coverage goal: 80%+
+### Test Verification Criteria
+
+When implementing or modifying a service or processor, verify completeness with:
+
+1. **Tests Pass**: Run `npm test` - all tests must pass without errors
+2. **Code Coverage**: Run `npm run test:coverage` - target **90%+ coverage** for the code being tested
+   - Statements: ≥90%
+   - Branches: ≥90% (critical for error handling paths)
+   - Functions: ≥90%
+   - Lines: ≥90%
+
+**Coverage Goal**: 80%+ overall project coverage, 90%+ for new implementations
+
+**Example**: [ImageDownloader](src/services/image-downloader.ts) achieved 98.36% statement coverage with comprehensive test suite.
 
 ## Key Files to Understand First
 
