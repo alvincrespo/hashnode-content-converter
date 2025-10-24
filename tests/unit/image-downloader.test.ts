@@ -9,6 +9,8 @@ import {
   createSimpleStatusMock,
   createRedirectMock,
   createSuccessDownloadMock,
+  createBadRedirectMock,
+  createResponseStreamErrorMock,
 } from '../mocks/mocks';
 
 // Mock modules
@@ -122,12 +124,7 @@ describe('ImageDownloader', () => {
       const url = 'https://example.com/image.png';
       const filepath = '/tmp/image.png';
 
-      vi.mocked(https.get).mockImplementation((_urlArg, _options, callback) => {
-        const mockResponse = createMockResponse(301, {});
-        callback!(mockResponse);
-        return createMockClientRequest();
-      });
-
+      vi.mocked(https.get).mockImplementation(createBadRedirectMock(301));
       vi.mocked(fs.existsSync).mockReturnValue(false);
       vi.mocked(fs.mkdirSync).mockImplementation(() => '');
 
@@ -199,21 +196,7 @@ describe('ImageDownloader', () => {
       const filepath = '/tmp/image.png';
       const mockFileStream = createMockFileStream();
 
-      vi.mocked(https.get).mockImplementation((_urlArg, _options, callback) => {
-        const mockResponse = createMockResponse(200);
-        mockResponse.pipe = vi.fn((dest) => {
-          return dest;
-        });
-
-        callback!(mockResponse);
-
-        setTimeout(() => {
-          mockResponse.emit('error', new Error('Stream error occurred'));
-        }, 5);
-
-        return createMockClientRequest();
-      });
-
+      vi.mocked(https.get).mockImplementation(createResponseStreamErrorMock());
       vi.mocked(fs.existsSync).mockReturnValue(false);
       vi.mocked(fs.mkdirSync).mockImplementation(() => '');
       vi.mocked(fs.createWriteStream).mockReturnValue(mockFileStream as any);

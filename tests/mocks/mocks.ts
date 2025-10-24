@@ -122,3 +122,39 @@ export function createSuccessDownloadMock(
     return createMockClientRequest();
   };
 }
+
+/**
+ * Create https.get mock for redirect without location header
+ * Simulates malformed redirect responses (missing location header)
+ * @param statusCode Redirect status code (301 or 302)
+ * @returns Mock implementation function for https.get
+ */
+export function createBadRedirectMock(statusCode: number) {
+  return (_urlArg: any, _options: any, callback: any) => {
+    const mockResponse = createMockResponse(statusCode, {});
+    callback!(mockResponse);
+    return createMockClientRequest();
+  };
+}
+
+/**
+ * Create https.get mock for response stream error
+ * Simulates HTTP response that errors during streaming
+ * @returns Mock implementation function for https.get
+ */
+export function createResponseStreamErrorMock() {
+  return (_urlArg: any, _options: any, callback: any) => {
+    const mockResponse = createMockResponse(200);
+    mockResponse.pipe = vi.fn((dest: any) => {
+      return dest;
+    });
+
+    callback!(mockResponse);
+
+    setTimeout(() => {
+      mockResponse.emit('error', new Error('Stream error occurred'));
+    }, 5);
+
+    return createMockClientRequest();
+  };
+}
