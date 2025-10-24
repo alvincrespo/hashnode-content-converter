@@ -20,7 +20,13 @@
     "prepublishOnly": "npm run build && npm test"
   },
   "keywords": [
-    "hashnode", "content", "migration", "blog", "markdown", "converter", "export"
+    "hashnode",
+    "content",
+    "migration",
+    "blog",
+    "markdown",
+    "converter",
+    "export"
   ],
   "author": "Alvin Crespo",
   "license": "MIT",
@@ -28,6 +34,7 @@
     "@types/node": "^24.0.0",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
+    "@vitest/coverage-v8": "^4.0.3",
     "@vitest/ui": "^4.0.0",
     "eslint": "^9.0.0",
     "typescript": "^5.0.0",
