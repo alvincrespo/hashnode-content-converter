@@ -1,0 +1,21 @@
+{
+  "posts": [
+    {
+      "_id": "test001",
+      "id": "test001",
+      "cuid": "test001",
+      "slug": "test-post",
+      "title": "Test Post",
+      "dateAdded": "2024-01-15T10:00:00.000Z",
+      "createdAt": "2024-01-15T10:00:00.000Z",
+      "updatedAt": "2024-01-15T10:00:00.000Z",
+      "contentMarkdown": "# Test Post",
+      "content": "<h1>Test Post</h1>",
+      "brief": "Test post",
+      "views": 10,
+      "author": "test",
+      "tags": [],
+      "isActive": true
+    }
+  ]
+}
