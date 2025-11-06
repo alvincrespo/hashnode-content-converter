@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import type { BufferEncoding } from 'node:buffer';
 
 /**
  * Configuration options for FileWriter service
