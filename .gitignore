@@ -13,3 +13,5 @@ coverage/
 npm-debug.log*
 .env
 .env.local
+.env
+.mcp.json
