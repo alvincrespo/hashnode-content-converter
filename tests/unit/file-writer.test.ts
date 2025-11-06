@@ -138,4 +138,83 @@ describe('FileWriter', () => {
       ).rejects.toThrow('Failed to create directory');
     });
   });
+
+  describe('File Writing', () => {
+    beforeEach(() => {
+      vi.mocked(fs.existsSync).mockReturnValue(false);
+      vi.mocked(fs.promises.mkdir).mockResolvedValue(undefined);
+      vi.mocked(fs.promises.writeFile).mockResolvedValue(undefined);
+      vi.mocked(fs.promises.rename).mockResolvedValue(undefined);
+    });
+
+    it('should write frontmatter + content correctly', async () => {
+      const frontmatter = '---\ntitle: Test\n---';
+      const content = '# Hello World';
+
+      await fileWriter.writePost('./blog', 'test-post', frontmatter, content);
+
+      const expectedContent = frontmatter + '\n' + content;
+      expect(fs.promises.writeFile).toHaveBeenCalledWith(
+        expect.stringContaining('.tmp'),
+        expectedContent,
+        'utf8'
+      );
+    });
+
+    it('should create index.md in post directory', async () => {
+      const result = await fileWriter.writePost('./blog', 'my-post', '---\n', 'content');
+
+      expect(result).toContain('my-post/index.md');
+      expect(fs.promises.writeFile).toHaveBeenCalledWith(
+        expect.stringContaining('my-post/index.md.tmp'),
+        expect.any(String),
+        'utf8'
+      );
+    });
+
+    it('should return absolute path to written file', async () => {
+      const result = await fileWriter.writePost('./blog', 'my-post', '---\n', 'content');
+
+      expect(result).toMatch(/^\/.*my-post\/index\.md$/);
+    });
+
+    it('should respect encoding configuration', async () => {
+      const writerWithLatin1 = new FileWriter({ encoding: 'latin1' });
+      vi.mocked(fs.promises.mkdir).mockResolvedValue(undefined);
+      vi.mocked(fs.promises.writeFile).mockResolvedValue(undefined);
+      vi.mocked(fs.promises.rename).mockResolvedValue(undefined);
+
+      await writerWithLatin1.writePost('./blog', 'my-post', '---\n', 'content');
+
+      expect(fs.promises.writeFile).toHaveBeenCalledWith(
+        expect.stringContaining('.tmp'),
+        expect.any(String),
+        'latin1'
+      );
+    });
+
+    it('should write empty content (edge case)', async () => {
+      const result = await fileWriter.writePost('./blog', 'empty-post', '---\n', '');
+
+      expect(result).toBeDefined();
+      expect(fs.promises.writeFile).toHaveBeenCalledWith(
+        expect.stringContaining('.tmp'),
+        '---\n\n',
+        'utf8'
+      );
+    });
+
+    it('should handle very large content (stress test)', async () => {
+      const largeContent = 'x'.repeat(1000000); // 1MB of 'x'
+
+      const result = await fileWriter.writePost('./blog', 'large-post', '---\n', largeContent);
+
+      expect(result).toBeDefined();
+      expect(fs.promises.writeFile).toHaveBeenCalledWith(
+        expect.stringContaining('.tmp'),
+        expect.stringContaining(largeContent),
+        'utf8'
+      );
+    });
+  });
 });
