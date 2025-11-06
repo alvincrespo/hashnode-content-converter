@@ -107,6 +107,58 @@ export class FileWriter {
   }
 
   /**
+   * Write content to a file atomically using temp file and rename
+   * Prevents partial writes if operation fails midway
+   * @param filePath - Target file path
+   * @param content - Content to write
+   * @throws FileWriteError if write or rename fails
+   */
+  private async writeFileAtomic(filePath: string, content: string): Promise<void> {
+    const tempPath = `${filePath}.tmp`;
+
+    try {
+      // Write to temp file
+      await fs.promises.writeFile(tempPath, content, this.encoding);
+
+      // Rename to final location (atomic operation on most filesystems)
+      await fs.promises.rename(tempPath, filePath);
+    } catch (error) {
+      // Cleanup temp file on error
+      try {
+        await fs.promises.unlink(tempPath);
+      } catch {
+        // Ignore cleanup errors - temp file might not exist
+      }
+
+      throw new FileWriteError(
+        `Failed to write file atomically: ${error instanceof Error ? error.message : String(error)}`,
+        filePath,
+        error instanceof Error && error.message.includes('rename') ? 'rename_file' : 'write_file',
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  /**
+   * Write content directly to a file without atomic operations
+   * @param filePath - Target file path
+   * @param content - Content to write
+   * @throws FileWriteError if write fails
+   */
+  private async writeFileDirect(filePath: string, content: string): Promise<void> {
+    try {
+      await fs.promises.writeFile(filePath, content, this.encoding);
+    } catch (error) {
+      throw new FileWriteError(
+        `Failed to write file: ${error instanceof Error ? error.message : String(error)}`,
+        filePath,
+        'write_file',
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  /**
    * Check if a post already exists in the output directory
    * @param outputDir - Base output directory
    * @param slug - Post slug to check
