@@ -59,6 +59,50 @@ export class FileWriter {
     this.atomicWrites = config?.atomicWrites ?? true;
   }
 
+  /**
+   * Sanitize a slug to prevent path traversal and invalid characters
+   * @param slug - Raw slug from post metadata
+   * @returns Sanitized slug safe for filesystem use
+   * @throws FileWriteError if slug is invalid or becomes empty after sanitization
+   */
+  private sanitizeSlug(slug: string): string {
+    // Remove leading/trailing whitespace
+    let sanitized = slug.trim();
+
+    // Reject absolute paths
+    if (sanitized.startsWith('/')) {
+      throw new FileWriteError(
+        `Invalid slug: absolute paths are not allowed (${slug})`,
+        slug,
+        'validate_path'
+      );
+    }
+
+    // Reject parent directory traversal
+    if (sanitized.includes('..')) {
+      throw new FileWriteError(
+        `Invalid slug: parent directory traversal is not allowed (${slug})`,
+        slug,
+        'validate_path'
+      );
+    }
+
+    // Replace invalid filename characters with hyphens
+    // Invalid chars: / \ : * ? " < > |
+    sanitized = sanitized.replace(/[/\\:*?"<>|]/g, '-');
+
+    // Ensure result is not empty after sanitization
+    if (sanitized.length === 0) {
+      throw new FileWriteError(
+        `Invalid slug: slug is empty after sanitization (original: ${slug})`,
+        slug,
+        'validate_path'
+      );
+    }
+
+    return sanitized;
+  }
+
   async writePost(_outputDir: string, _slug: string, _frontmatter: string, _content: string): Promise<string> {
     throw new Error('Not implemented');
   }
