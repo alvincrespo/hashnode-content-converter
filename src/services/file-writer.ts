@@ -117,14 +117,11 @@ export class FileWriter {
   private async writeFileAtomic(filePath: string, content: string): Promise<void> {
     const tempPath = `${filePath}.tmp`;
 
+    // Write to temp file first
     try {
-      // Write to temp file
       await fs.promises.writeFile(tempPath, content, this.encoding);
-
-      // Rename to final location (atomic operation on most filesystems)
-      await fs.promises.rename(tempPath, filePath);
     } catch (error) {
-      // Cleanup temp file on error
+      // Cleanup temp file on error (may not exist if write failed early)
       try {
         await fs.promises.unlink(tempPath);
       } catch {
@@ -134,7 +131,26 @@ export class FileWriter {
       throw new FileWriteError(
         `Failed to write file atomically: ${error instanceof Error ? error.message : String(error)}`,
         filePath,
-        error instanceof Error && error.message.includes('rename') ? 'rename_file' : 'write_file',
+        'write_file',
+        error instanceof Error ? error : undefined
+      );
+    }
+
+    // Rename to final location (atomic operation on most filesystems)
+    try {
+      await fs.promises.rename(tempPath, filePath);
+    } catch (error) {
+      // Cleanup temp file on error
+      try {
+        await fs.promises.unlink(tempPath);
+      } catch {
+        // Ignore cleanup errors
+      }
+
+      throw new FileWriteError(
+        `Failed to rename temp file: ${error instanceof Error ? error.message : String(error)}`,
+        filePath,
+        'rename_file',
         error instanceof Error ? error : undefined
       );
     }
