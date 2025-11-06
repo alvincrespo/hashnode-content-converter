@@ -217,4 +217,205 @@ describe('FileWriter', () => {
       );
     });
   });
+
+  describe('Atomic Writes', () => {
+    beforeEach(() => {
+      vi.mocked(fs.existsSync).mockReturnValue(false);
+      vi.mocked(fs.promises.mkdir).mockResolvedValue(undefined);
+    });
+
+    it('should write to .tmp file first when atomicWrites is true', async () => {
+      vi.mocked(fs.promises.writeFile).mockResolvedValue(undefined);
+      vi.mocked(fs.promises.rename).mockResolvedValue(undefined);
+
+      await fileWriter.writePost('./blog', 'atomic-post', '---\n', 'content');
+
+      expect(fs.promises.writeFile).toHaveBeenCalledWith(
+        expect.stringContaining('.tmp'),
+        expect.any(String),
+        'utf8'
+      );
+    });
+
+    it('should rename .tmp to final file after write', async () => {
+      vi.mocked(fs.promises.writeFile).mockResolvedValue(undefined);
+      vi.mocked(fs.promises.rename).mockResolvedValue(undefined);
+
+      await fileWriter.writePost('./blog', 'atomic-post', '---\n', 'content');
+
+      expect(fs.promises.rename).toHaveBeenCalledWith(
+        expect.stringContaining('.tmp'),
+        expect.stringContaining('index.md')
+      );
+    });
+
+    it('should cleanup .tmp file on write failure', async () => {
+      vi.mocked(fs.promises.writeFile).mockRejectedValue(new Error('Write failed'));
+      vi.mocked(fs.promises.unlink).mockResolvedValue(undefined);
+
+      await expect(
+        fileWriter.writePost('./blog', 'fail-post', '---\n', 'content')
+      ).rejects.toThrow(FileWriteError);
+
+      expect(fs.promises.unlink).toHaveBeenCalledWith(expect.stringContaining('.tmp'));
+    });
+
+    it('should use direct write when atomicWrites is false', async () => {
+      const directWriter = new FileWriter({ atomicWrites: false });
+      vi.mocked(fs.promises.writeFile).mockResolvedValue(undefined);
+
+      await directWriter.writePost('./blog', 'direct-post', '---\n', 'content');
+
+      // Should NOT rename when using direct writes
+      expect(fs.promises.rename).not.toHaveBeenCalled();
+      expect(fs.promises.writeFile).toHaveBeenCalledWith(
+        expect.stringContaining('index.md'),
+        expect.any(String),
+        'utf8'
+      );
+    });
+  });
+
+  describe('Overwrite Behavior', () => {
+    beforeEach(() => {
+      vi.mocked(fs.promises.mkdir).mockResolvedValue(undefined);
+      vi.mocked(fs.promises.writeFile).mockResolvedValue(undefined);
+      vi.mocked(fs.promises.rename).mockResolvedValue(undefined);
+    });
+
+    it('should throw error if file exists and overwrite is false', async () => {
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+
+      await expect(
+        fileWriter.writePost('./blog', 'existing-post', '---\n', 'content')
+      ).rejects.toThrow(FileWriteError);
+
+      await expect(
+        fileWriter.writePost('./blog', 'existing-post', '---\n', 'content')
+      ).rejects.toThrow('already exists and overwrite is disabled');
+    });
+
+    it('should overwrite file if overwrite is true', async () => {
+      const overwriteWriter = new FileWriter({ overwrite: true });
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+
+      await expect(
+        overwriteWriter.writePost('./blog', 'existing-post', '---\n', 'new content')
+      ).resolves.toBeDefined();
+
+      expect(fs.promises.writeFile).toHaveBeenCalled();
+    });
+
+    it('should create file if it does not exist regardless of overwrite setting', async () => {
+      vi.mocked(fs.existsSync).mockReturnValue(false);
+
+      await expect(
+        fileWriter.writePost('./blog', 'new-post', '---\n', 'content')
+      ).resolves.toBeDefined();
+
+      expect(fs.promises.writeFile).toHaveBeenCalled();
+    });
+  });
+
+  describe('postExists()', () => {
+    it('should return true if post directory exists', () => {
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+
+      const result = fileWriter.postExists('./blog', 'existing-post');
+
+      expect(result).toBe(true);
+      expect(fs.existsSync).toHaveBeenCalledWith(expect.stringContaining('existing-post'));
+    });
+
+    it('should return false if post directory does not exist', () => {
+      vi.mocked(fs.existsSync).mockReturnValue(false);
+
+      const result = fileWriter.postExists('./blog', 'non-existent-post');
+
+      expect(result).toBe(false);
+    });
+
+    it('should return false on invalid slug (sanitization fails)', () => {
+      const result = fileWriter.postExists('./blog', '/invalid/slug');
+
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('Error Handling', () => {
+    beforeEach(() => {
+      vi.mocked(fs.existsSync).mockReturnValue(false);
+    });
+
+    it('should wrap mkdir errors in FileWriteError', async () => {
+      vi.mocked(fs.promises.mkdir).mockRejectedValue(new Error('EACCES: permission denied'));
+
+      await expect(
+        fileWriter.writePost('./blog', 'my-post', '---\n', 'content')
+      ).rejects.toThrow(FileWriteError);
+
+      await expect(
+        fileWriter.writePost('./blog', 'my-post', '---\n', 'content')
+      ).rejects.toMatchObject({
+        operation: 'create_dir',
+        cause: expect.objectContaining({ message: 'EACCES: permission denied' })
+      });
+    });
+
+    it('should wrap write errors in FileWriteError', async () => {
+      vi.mocked(fs.promises.mkdir).mockResolvedValue(undefined);
+      vi.mocked(fs.promises.writeFile).mockRejectedValue(new Error('ENOSPC: no space left'));
+      vi.mocked(fs.promises.unlink).mockResolvedValue(undefined);
+
+      await expect(
+        fileWriter.writePost('./blog', 'my-post', '---\n', 'content')
+      ).rejects.toThrow(FileWriteError);
+
+      await expect(
+        fileWriter.writePost('./blog', 'my-post', '---\n', 'content')
+      ).rejects.toMatchObject({
+        operation: 'write_file'
+      });
+    });
+
+    it('should wrap rename errors in FileWriteError', async () => {
+      vi.mocked(fs.promises.mkdir).mockResolvedValue(undefined);
+      vi.mocked(fs.promises.writeFile).mockResolvedValue(undefined);
+      vi.mocked(fs.promises.rename).mockRejectedValue(new Error('rename failed'));
+      vi.mocked(fs.promises.unlink).mockResolvedValue(undefined);
+
+      await expect(
+        fileWriter.writePost('./blog', 'my-post', '---\n', 'content')
+      ).rejects.toThrow(FileWriteError);
+
+      await expect(
+        fileWriter.writePost('./blog', 'my-post', '---\n', 'content')
+      ).rejects.toMatchObject({
+        operation: 'rename_file'
+      });
+    });
+
+    it('should include path in error message', async () => {
+      vi.mocked(fs.promises.mkdir).mockRejectedValue(new Error('Failed'));
+
+      try {
+        await fileWriter.writePost('./blog', 'my-post', '---\n', 'content');
+      } catch (error) {
+        expect(error).toBeInstanceOf(FileWriteError);
+        expect((error as FileWriteError).path).toContain('my-post');
+      }
+    });
+
+    it('should chain original error as cause', async () => {
+      const originalError = new Error('Original error');
+      vi.mocked(fs.promises.mkdir).mockRejectedValue(originalError);
+
+      try {
+        await fileWriter.writePost('./blog', 'my-post', '---\n', 'content');
+      } catch (error) {
+        expect(error).toBeInstanceOf(FileWriteError);
+        expect((error as FileWriteError).cause).toBe(originalError);
+      }
+    });
+  });
 });
