@@ -278,16 +278,22 @@ Extract the conversion logic into a modular, well-typed TypeScript npm package (
 - ✅ Fixed in commit e7d5921
 - ✅ Issue #1 closed
 
-#### Step 3.2: Implement FileWriter Service
-- Create `src/services/file-writer.ts`
-- Implement directory creation with recursive option
-- Implement markdown file writing
-- Handle path resolution and validation
-- Write unit tests for:
-  - Directory creation
-  - File writing
-  - Path validation
-  - Error cases
+#### Step 3.2: Implement FileWriter Service ✅ COMPLETE (2025-11-06)
+- ✅ Create `src/services/file-writer.ts`
+- ✅ Implement directory creation with recursive option
+- ✅ Implement markdown file writing with atomic writes
+- ✅ Handle path resolution and validation (security-focused)
+- ✅ Write unit tests for:
+  - ✅ Path validation (6 tests)
+  - ✅ Directory creation (4 tests)
+  - ✅ File writing (6 tests)
+  - ✅ Atomic writes (4 tests)
+  - ✅ Overwrite behavior (3 tests)
+  - ✅ postExists() method (3 tests)
+  - ✅ Error handling (5 tests)
+- ✅ 97.77% test coverage achieved (32 tests passing)
+- ✅ 100% function coverage
+- ✅ Issue #2 requirements met
 
 #### Step 3.3: Implement Logger Service
 - Create `src/services/logger.ts`
