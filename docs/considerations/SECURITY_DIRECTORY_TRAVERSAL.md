@@ -21,7 +21,9 @@ if (sanitized.includes('..')) {
 
 ## Security Review Feedback
 
-**Reviewer Comment**:
+### Reviewer Comment #1: Path Resolution vs String Matching
+
+**Feedback**:
 > The path traversal check using `includes('..')` is insufficient and can be bypassed. Valid slugs like 'hello..world' or 'version-1..0' would be incorrectly rejected, while encoded patterns or path normalization could potentially bypass this check. Consider using path normalization and checking if the resolved path is within the expected directory instead.
 
 **Suggested Implementation**:
@@ -36,6 +38,46 @@ if (!resolved.startsWith(baseDir + path.sep)) {
   );
 }
 ```
+
+### Reviewer Comment #2: Order of Operations
+
+**Feedback**:
+> Security vulnerability: The order of operations allows bypassing path traversal protection. The `..` check happens before character replacement (line 95), but the replacement happens after. This means an attacker could potentially craft inputs where the dangerous characters are replaced in a way that creates `..` sequences after sanitization.
+
+**Reviewer's Concern**:
+```typescript
+// Lines 75-101 in src/services/file-writer.ts
+// Current order:
+// 1. Check for absolute paths (line 75-82)
+// 2. Check for '..' patterns (line 85-91) ← Validation BEFORE sanitization
+// 3. Replace dangerous characters (line 95) ← Sanitization AFTER validation
+
+// Reviewer suggests: Validate AFTER sanitization
+```
+
+**Analysis of Order-of-Operations Concern**:
+
+This feedback raises an architectural best practice but **does not identify an actual vulnerability** in the current code. Here's why:
+
+1. **No Bypass Possible**: The `..` check at line 85 catches all existing `..` sequences in the input BEFORE any character replacement occurs. The character replacement at line 95 cannot CREATE new `..` sequences because it only replaces specific characters (`/\:*?"<>|`) with hyphens, and none of these characters are dots.
+
+2. **Character Set Analysis**:
+   ```typescript
+   // These characters are replaced: / \ : * ? " < > |
+   // None of these are dots (.)
+   sanitized.replace(/[/\\:*?"<>|]/g, '-');
+
+   // Therefore, replacement cannot create new '..' sequences
+   ```
+
+3. **Architectural Best Practice**: While not a vulnerability, the reviewer makes a valid architectural point: in security-critical systems, it's generally better to **validate AFTER sanitization** to ensure you're checking the final state that will be used. This is defense-in-depth thinking.
+
+4. **CLI Tool Context**: For this CLI tool processing trusted Hashnode exports, the current order is safe because:
+   - Input is trusted (user's own export)
+   - Character replacement cannot introduce new `..` patterns
+   - The path resolution approach would make this concern moot anyway
+
+**Verdict**: This is a **valid architectural consideration** for best practices, not a security vulnerability. It reinforces that the path resolution approach (suggested in Comment #1) would be the ideal solution for web service use cases.
 
 ## Analysis
 
@@ -189,15 +231,26 @@ describe('Path Resolution Security', () => {
 ## Revision History
 
 - **2025-11-06**: Initial document created based on PR review feedback
+- **2025-11-06**: Added order-of-operations security feedback analysis
 - **Status**: Decision to keep current implementation for CLI tool use case
 
 ## Summary
 
-The current `includes('..')` check is **intentionally conservative** for a CLI tool with a low threat model. While the reviewer's path resolution approach is technically superior and would be **required for a web service**, the current implementation is appropriate given:
+The security review raised two concerns about the path traversal protection in `sanitizeSlug()`:
 
-1. Trusted input source (user's own Hashnode export)
-2. Negligible false positive rate in practice
-3. Defense-in-depth with multiple validation layers
-4. Simplicity and maintainability
+1. **Path Resolution vs String Matching**: The `includes('..')` check would reject valid slugs like `hello..world` and could theoretically be bypassed with encoding
+2. **Order of Operations**: Validation happens before sanitization, which is architecturally suboptimal (though not a vulnerability in this specific code)
 
-**Action Required**: If this tool is ever exposed as a web service or processes untrusted third-party input, **immediately implement the path resolution approach** documented in this file.
+**Assessment**: Both concerns are **valid architectural considerations** for security-critical systems, but the current implementation is appropriate for this CLI tool's threat model:
+
+- **Trusted input source**: User's own Hashnode export data
+- **No actual vulnerability**: Character replacement cannot create new `..` sequences
+- **Defense-in-depth**: Multiple validation layers exist
+- **Simplicity**: Easy to understand and maintain
+- **Negligible false positive rate**: Real Hashnode slugs rarely contain `..`
+
+**Path Forward**:
+- **For CLI tool (current)**: ✅ Keep current implementation
+- **For web service (future)**: ⚠️ **Must implement path resolution approach** (see "Future Implementation" section above)
+
+Both reviewer concerns would be completely addressed by the path resolution approach, making it the clear choice for any web service or untrusted input scenario.
