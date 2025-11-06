@@ -8,6 +8,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Current Status**: Architecture designed, types defined, stub classes created. Core implementation still in progress.
 
+**Platform Support**: This package is designed for Unix-like systems (macOS, Linux). Windows is not supported.
+
 Reference: [TRANSITION.md](TRANSITION.md) contains the full implementation roadmap and architectural design.
 
 ## Tech Stack

@@ -154,18 +154,18 @@ export interface FileWriterConfig {
 - Absolute paths: `/etc/passwd`
 - Special characters: `slug:with:colons`, `slug/with/slashes`
 - Unicode: `日本語`, `emoji🎉`
-- Windows reserved names: `CON`, `PRN`, `AUX`
+
+**Note**: Windows is not supported. Implementation focuses on Unix-like systems (macOS, Linux).
 
 **Validation Approach**:
 ```typescript
 private sanitizeSlug(slug: string): string {
   // 1. Remove leading/trailing whitespace
-  // 2. Reject absolute paths (starts with / or C:\)
+  // 2. Reject absolute paths (starts with /)
   // 3. Reject parent directory traversal (..)
   // 4. Replace invalid filename characters (/, \, :, *, ?, ", <, >, |)
-  // 5. Reject Windows reserved names
-  // 6. Ensure result is not empty after sanitization
-  // 7. Return sanitized slug
+  // 5. Ensure result is not empty after sanitization
+  // 6. Return sanitized slug
 }
 ```
 
@@ -268,15 +268,13 @@ export class FileWriteError extends Error {
 
 **Test Categories**:
 
-#### A. Path Validation Tests (8 tests)
+#### A. Path Validation Tests (6 tests)
 - ✅ Accept valid slugs (`my-blog-post`, `post-123`)
 - ✅ Reject parent directory traversal (`../etc/passwd`)
-- ✅ Reject absolute paths (`/etc/passwd`, `C:\Windows`)
+- ✅ Reject absolute paths (`/etc/passwd`)
 - ✅ Sanitize special characters (`my:post` → `my-post`)
-- ✅ Reject Windows reserved names (`CON`, `PRN`, `AUX`)
 - ✅ Handle Unicode characters correctly
 - ✅ Reject empty slugs after sanitization
-- ✅ Handle whitespace trimming
 
 #### B. Directory Creation Tests (4 tests)
 - ✅ Create directory if it doesn't exist
@@ -315,7 +313,7 @@ export class FileWriteError extends Error {
 - ✅ Chain original error as cause
 - ✅ Cleanup on failure scenarios
 
-**Total Tests**: ~33 tests (targeting 90%+ coverage)
+**Total Tests**: ~31 tests (targeting 90%+ coverage)
 
 ### Step 5: Implement Mock Helpers
 
@@ -445,16 +443,7 @@ describe('FileWriter', () => {
 
 ## Potential Challenges & Solutions
 
-### Challenge 1: Cross-Platform Path Handling
-
-**Issue**: Windows uses `\` separators, Unix uses `/`
-
-**Solution**:
-- Always use `path.join()` and `path.resolve()` (never string concatenation)
-- Test on both platforms (use GitHub Actions matrix)
-- Normalize paths in tests using `path.normalize()`
-
-### Challenge 2: Path Traversal Security
+### Challenge 1: Path Traversal Security
 
 **Issue**: Malicious slugs could write outside outputDir
 
@@ -480,7 +469,7 @@ private validatePath(outputDir: string, slug: string): void {
 }
 ```
 
-### Challenge 3: Filesystem Permissions
+### Challenge 2: Filesystem Permissions
 
 **Issue**: Cannot write to directory (EACCES)
 
@@ -490,16 +479,7 @@ private validatePath(outputDir: string, slug: string): void {
 - Suggest checking permissions or disk space
 - Include directory path in error message
 
-### Challenge 4: Atomic Writes on Windows
-
-**Issue**: `fs.rename()` may fail on Windows if target exists
-
-**Solution**:
-- Use `fs.promises.rename()` with overwrite behavior
-- If rename fails, fall back to delete + move
-- Document behavior difference in JSDoc
-
-### Challenge 5: Unicode and Special Characters
+### Challenge 3: Unicode and Special Characters
 
 **Issue**: Some filesystems don't support all Unicode characters
 
@@ -509,7 +489,7 @@ private validatePath(outputDir: string, slug: string): void {
 - Log warning when sanitization changes slug
 - Document supported character set
 
-### Challenge 6: Concurrent Writes
+### Challenge 4: Concurrent Writes
 
 **Issue**: Multiple processes writing to same file
 
@@ -518,7 +498,7 @@ private validatePath(outputDir: string, slug: string): void {
 - Document that service is not thread-safe across processes
 - Suggest using file locking for concurrent scenarios (future enhancement)
 
-### Challenge 7: Disk Space
+### Challenge 5: Disk Space
 
 **Issue**: Out of disk space (ENOSPC)
 
@@ -554,7 +534,7 @@ private validatePath(outputDir: string, slug: string): void {
 - ✅ Follows ImageDownloader pattern for consistency
 - ✅ Single responsibility principle
 - ✅ Comprehensive error handling
-- ✅ Cross-platform compatibility (Windows, Unix, macOS)
+- ✅ Unix compatibility (macOS, Linux)
 - ✅ Security-conscious (path validation)
 
 ---
@@ -603,8 +583,7 @@ private validatePath(outputDir: string, slug: string): void {
 | Risk | Likelihood | Impact | Mitigation |
 |------|------------|--------|------------|
 | Path traversal vulnerability | Medium | High | Comprehensive slug sanitization, path validation |
-| Cross-platform path issues | Medium | Medium | Use path module, test on multiple platforms |
-| Atomic write failures | Low | Medium | Fallback to direct write, comprehensive error handling |
+| Atomic write failures | Low | Medium | Comprehensive error handling, temp file cleanup |
 | Unicode filename issues | Low | Low | Conservative sanitization, document limitations |
 | Disk space errors | Low | High | Clear error messages, temp file cleanup |
 | Permission errors | Medium | High | Catch EACCES, provide helpful error messages |
@@ -673,22 +652,17 @@ fs.writeFileSync(indexPath, markdown, 'utf8');
 
 ---
 
-## Questions for Review
+## Implementation Decisions
 
-1. **Sync vs Async**: Should we use sync operations for simplicity, or async for consistency?
-   - **Recommendation**: Async for consistency with ImageDownloader and future-proofing
+1. **Sync vs Async**: Use async operations for consistency with ImageDownloader and future-proofing ✅
 
-2. **Atomic Writes Default**: Should atomic writes be enabled by default?
-   - **Recommendation**: Yes (atomicWrites: true by default)
+2. **Atomic Writes Default**: Atomic writes enabled by default (atomicWrites: true) ✅
 
-3. **Slug Sanitization**: How aggressive should slug sanitization be?
-   - **Recommendation**: Conservative (alphanumeric, hyphens, underscores only)
+3. **Slug Sanitization**: Conservative approach (alphanumeric, hyphens, underscores only) ✅
 
-4. **Windows Reserved Names**: Should we handle CON, PRN, AUX, etc.?
-   - **Recommendation**: Yes, for cross-platform compatibility
+4. **Platform Support**: Unix-like systems only (macOS, Linux). Windows is not supported ✅
 
-5. **Error Types**: Should we create separate error classes or use a single FileWriteError?
-   - **Recommendation**: Single class with `operation` discriminator
+5. **Error Types**: Single FileWriteError class with `operation` discriminator ✅
 
 ---
 
