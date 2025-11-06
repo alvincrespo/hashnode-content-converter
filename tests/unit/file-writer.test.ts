@@ -82,4 +82,60 @@ describe('FileWriter', () => {
       });
     });
   });
+
+  describe('Directory Creation', () => {
+    beforeEach(() => {
+      vi.mocked(fs.existsSync).mockReturnValue(false);
+      vi.mocked(fs.promises.writeFile).mockResolvedValue(undefined);
+      vi.mocked(fs.promises.rename).mockResolvedValue(undefined);
+    });
+
+    it('should create directory if it does not exist', async () => {
+      vi.mocked(fs.promises.mkdir).mockResolvedValue(undefined);
+
+      await fileWriter.writePost('./blog', 'my-post', '---\n', 'content');
+
+      expect(fs.promises.mkdir).toHaveBeenCalledWith(
+        expect.stringContaining('my-post'),
+        { recursive: true }
+      );
+    });
+
+    it('should not fail if directory already exists (recursive:true)', async () => {
+      vi.mocked(fs.promises.mkdir).mockResolvedValue(undefined);
+
+      await expect(
+        fileWriter.writePost('./blog', 'existing-post', '---\n', 'content')
+      ).resolves.toBeDefined();
+
+      expect(fs.promises.mkdir).toHaveBeenCalledWith(
+        expect.stringContaining('existing-post'),
+        { recursive: true }
+      );
+    });
+
+    it('should create nested directories recursively', async () => {
+      vi.mocked(fs.promises.mkdir).mockResolvedValue(undefined);
+
+      await fileWriter.writePost('./blog/nested/path', 'my-post', '---\n', 'content');
+
+      expect(fs.promises.mkdir).toHaveBeenCalledWith(
+        expect.stringContaining('nested/path/my-post'),
+        { recursive: true }
+      );
+    });
+
+    it('should throw FileWriteError on permission denied', async () => {
+      const permissionError = new Error('EACCES: permission denied');
+      vi.mocked(fs.promises.mkdir).mockRejectedValue(permissionError);
+
+      await expect(
+        fileWriter.writePost('./blog', 'my-post', '---\n', 'content')
+      ).rejects.toThrow(FileWriteError);
+
+      await expect(
+        fileWriter.writePost('./blog', 'my-post', '---\n', 'content')
+      ).rejects.toThrow('Failed to create directory');
+    });
+  });
 });
