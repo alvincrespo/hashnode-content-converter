@@ -1,3 +1,6 @@
+import * as fs from 'fs';
+import * as path from 'path';
+
 /**
  * Configuration options for FileWriter service
  */
@@ -101,6 +104,23 @@ export class FileWriter {
     }
 
     return sanitized;
+  }
+
+  /**
+   * Check if a post already exists in the output directory
+   * @param outputDir - Base output directory
+   * @param slug - Post slug to check
+   * @returns True if post directory exists, false otherwise
+   */
+  postExists(outputDir: string, slug: string): boolean {
+    try {
+      const sanitized = this.sanitizeSlug(slug);
+      const postDir = path.join(outputDir, sanitized);
+      return fs.existsSync(postDir);
+    } catch {
+      // If sanitization fails, the post doesn't exist (invalid slug)
+      return false;
+    }
   }
 
   async writePost(_outputDir: string, _slug: string, _frontmatter: string, _content: string): Promise<string> {
