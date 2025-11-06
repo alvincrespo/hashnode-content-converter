@@ -175,7 +175,55 @@ export class FileWriter {
     }
   }
 
-  async writePost(_outputDir: string, _slug: string, _frontmatter: string, _content: string): Promise<string> {
-    throw new Error('Not implemented');
+  /**
+   * Write a blog post with frontmatter and content to the filesystem
+   * @param outputDir - Base output directory (e.g., './blog')
+   * @param slug - Post slug (used as subdirectory name)
+   * @param frontmatter - YAML frontmatter string (includes --- markers)
+   * @param content - Markdown content body
+   * @returns Absolute path to the written file
+   * @throws FileWriteError if write fails or file exists (when overwrite=false)
+   */
+  async writePost(outputDir: string, slug: string, frontmatter: string, content: string): Promise<string> {
+    // Sanitize slug for filesystem safety
+    const sanitized = this.sanitizeSlug(slug);
+
+    // Construct paths
+    const postDir = path.join(outputDir, sanitized);
+    const filePath = path.join(postDir, 'index.md');
+
+    // Check if file exists and handle overwrite behavior
+    if (!this.overwrite && fs.existsSync(filePath)) {
+      throw new FileWriteError(
+        `File already exists and overwrite is disabled: ${filePath}`,
+        filePath,
+        'write_file'
+      );
+    }
+
+    // Create post directory (recursive)
+    try {
+      await fs.promises.mkdir(postDir, { recursive: true });
+    } catch (error) {
+      throw new FileWriteError(
+        `Failed to create directory: ${error instanceof Error ? error.message : String(error)}`,
+        postDir,
+        'create_dir',
+        error instanceof Error ? error : undefined
+      );
+    }
+
+    // Combine frontmatter + content
+    const markdown = frontmatter + '\n' + content;
+
+    // Write to file using selected strategy
+    if (this.atomicWrites) {
+      await this.writeFileAtomic(filePath, markdown);
+    } else {
+      await this.writeFileDirect(filePath, markdown);
+    }
+
+    // Return absolute path to written file
+    return path.resolve(filePath);
   }
 }
