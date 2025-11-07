@@ -158,3 +158,45 @@ export function createResponseStreamErrorMock() {
     return createMockClientRequest();
   };
 }
+
+/**
+ * Create a mock WriteStream for Logger file writing
+ * @returns Mock write stream with write, end, and on methods
+ */
+export function createMockWriteStream() {
+  const emitter = new EventEmitter();
+  return {
+    write: vi.fn(),
+    end: vi.fn((callback?: () => void) => {
+      if (callback) callback();
+    }),
+    on: (event: string, listener: any) => {
+      emitter.on(event, listener);
+      return emitter as any;
+    },
+    emit: (event: string, ...args: any[]) => emitter.emit(event, ...args),
+  } as any;
+}
+
+/**
+ * Create mock console methods for Logger testing
+ * @returns Object with mocked console methods
+ */
+export function createMockConsole() {
+  return {
+    log: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    info: vi.fn(),
+  };
+}
+
+/**
+ * Mock Date.now() with a fixed timestamp
+ * @param fixedTime Fixed timestamp to return
+ * @returns Cleanup function to restore Date.now()
+ */
+export function mockDateNow(fixedTime: number): () => void {
+  const spy = vi.spyOn(Date, 'now').mockReturnValue(fixedTime);
+  return () => spy.mockRestore();
+}
