@@ -281,12 +281,14 @@ ${divider}
         return;
       }
 
+      // Attach error listener before calling end() to catch any errors during closing
+      this.fileStream.on('error', reject);
+
       this.fileStream.end(() => {
+        // eslint-disable-next-line no-console
         console.log(`\n📋 Log file saved to: ${this.logFilePath}`);
         resolve();
       });
-
-      this.fileStream.on('error', reject);
     });
   }
 }
