@@ -523,7 +523,7 @@ describe('PostParser', () => {
       // Arrange
       const parser = new PostParser();
       const post = createValidPost({
-        title: 'Title with émojis 🎉 and 中文字符',
+        title: 'Title with emojis 🎉 and 中文字符',
         contentMarkdown: '# Content with Ünïcödë and 日本語',
       });
 
@@ -531,7 +531,7 @@ describe('PostParser', () => {
       const result = parser.parse(post);
 
       // Assert
-      expect(result.title).toBe('Title with émojis 🎉 and 中文字符');
+      expect(result.title).toBe('Title with emojis 🎉 and 中文字符');
       expect(result.contentMarkdown).toBe('# Content with Ünïcödë and 日本語');
     });
   });
