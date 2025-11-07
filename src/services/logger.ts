@@ -16,7 +16,7 @@ export interface LoggerConfig {
    * Logging verbosity level
    * - 'quiet': Console-only, no file output
    * - 'normal': Standard dual output (default)
-   * - 'verbose': Includes additional debug information
+   * - 'verbose': Reserved for future use (currently behaves like 'normal')
    */
   verbosity?: 'quiet' | 'normal' | 'verbose';
 }
@@ -48,6 +48,8 @@ export class Logger {
    */
   constructor(config?: LoggerConfig) {
     this.verbosity = config?.verbosity || 'normal';
+    // Note: 'verbose' mode is reserved for future enhancements
+    // Currently behaves identically to 'normal' mode
     this.http403Errors = [];
     this.startTime = Date.now();
     this.fileStream = null;
