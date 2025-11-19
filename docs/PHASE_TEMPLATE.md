@@ -63,8 +63,12 @@ INTEGRATION SECTION:
 - {UPSTREAM_COMPONENT}: Components that provide input
 - {DOWNSTREAM_COMPONENT}: Components that consume output
 - {INTEGRATION_PATTERN}: Code example of how component integrates
+- {TYPE_NAME}: Type name of the integrated component or interface
+- {ERROR_HANDLING_APPROACH}: Description of how errors are handled during integration
+- {ERROR_TRACKING_APPROACH}: Description of how errors are tracked and reported during integration
 
 CHALLENGES SECTION:
+- {CHALLENGE_NUMBER}: Challenge identifier (e.g., "1", "2", "3")
 - {CHALLENGE_NAME}: Name of potential challenge
 - {CHALLENGE_DESCRIPTION}: What makes this challenging
 - {SOLUTION_APPROACH}: How to solve or mitigate the challenge
@@ -76,13 +80,49 @@ DECISIONS SECTION:
 - {DECISION_OPTIONS}: Options considered
 - {DECISION_RATIONALE}: Why the chosen option was selected
 - {DECISION_RESULT}: Final decision made
+- {OPTION_NAME}: Name of an option considered in the decision
+- {ARGUMENT}: Argument or reasoning supporting an option
+- {RATIONALE_POINT}: Specific point in the rationale for the decision
+- {REVISIT_CONDITIONS}: Conditions under which the decision should be revisited
 
 SUMMARY SECTION:
 - {ACCOMPLISHMENTS_LIST}: Bulleted list of what was accomplished
+- {ACCOMPLISHMENT}: Single accomplishment item (used in repeated lists)
 - {FILES_CREATED}: List of new files with paths
 - {FILES_MODIFIED}: List of modified files with paths
 - {NEXT_PHASE}: Next phase identifier and name
 - {NEXT_ACTIONS}: What should happen next
+- {ACTION}: A specific action that was completed
+- {SCOPE_ITEM}: An item that is in or out of scope
+- {QUALITY_TARGET}: A quality metric or target
+- {DELIVERABLE}: A specific deliverable from the phase
+
+REFERENCE IMPLEMENTATION COMPARISON SECTION:
+- {HIGHLIGHT_NAME}: Name of the highlighted improvement or feature
+- {HIGHLIGHT_DESCRIPTION}: Description of the highlighted improvement or feature
+- {BENEFIT}: Benefit provided by the improvement or feature
+- {ORIGINAL_CODE}: Code snippet from the original/reference implementation
+- {NEW_CODE}: Code snippet from the new/current implementation
+- {CHARACTERISTIC}: Characteristic being compared (e.g., performance, readability)
+- {IMPROVEMENT}: Description of the improvement made
+
+RISK ASSESSMENT SECTION:
+- {RISK_NAME}: Name or description of the risk
+- {MITIGATION_STRATEGY}: Strategy to mitigate or reduce the risk
+
+TIMELINE SECTION:
+- {TIME_ESTIMATE}: Estimated time for a task or phase
+- {TASK_NAME}: Name of a task in the timeline
+
+NEXT STEPS SECTION:
+- {NEXT_PHASE_NUMBER}: Identifier for the next phase (e.g., "4.2", "5")
+- {NEXT_PHASE_NAME}: Name of the next phase
+- {NEXT_PHASE_DESCRIPTION}: Description of what the next phase involves
+
+FILES SECTION:
+- {FILE_DESCRIPTION}: Description of what the file contains or does
+- {MODIFICATION_DESCRIPTION}: Description of modifications made to a file
+- {TASK_DESCRIPTION}: Description of a task in a checklist
 
 Example Values:
 ==============
