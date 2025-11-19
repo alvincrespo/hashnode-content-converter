@@ -5,3 +5,7 @@ export * from './types/conversion-result';
 export { ImageDownloader } from './services/image-downloader';
 export { FileWriter } from './services/file-writer';
 export { Logger } from './services/logger';
+export {
+  MarkdownTransformer,
+  MarkdownTransformerOptions,
+} from './processors/markdown-transformer';
