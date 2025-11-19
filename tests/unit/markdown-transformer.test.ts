@@ -230,7 +230,7 @@ Final paragraph.`;
           const transformer = new MarkdownTransformer({
             trimTrailingWhitespace: true,
           });
-          const input = '* Item 1    \n* Item 2  \n';
+          const input = '* Item 1    \n* Item 2   \n';
           const expected = '* Item 1\n* Item 2\n';
           expect(transformer.transform(input)).toBe(expected);
         });
@@ -247,17 +247,35 @@ Final paragraph.`;
           const transformer = new MarkdownTransformer({
             trimTrailingWhitespace: true,
           });
-          const input = 'Line 1   \nLine 2     \nLine 3  \n';
+          const input = 'Line 1   \nLine 2     \nLine 3   \n';
           const expected = 'Line 1\nLine 2\nLine 3\n';
           expect(transformer.transform(input)).toBe(expected);
         });
 
-        it('should preserve intentional line breaks (not trim backslash + space)', () => {
+        it('should preserve markdown hard line breaks (exactly 2 trailing spaces)', () => {
           const transformer = new MarkdownTransformer({
             trimTrailingWhitespace: true,
           });
           const input = 'Line 1  \nLine 2';
-          const expected = 'Line 1\nLine 2';
+          const expected = 'Line 1  \nLine 2';
+          expect(transformer.transform(input)).toBe(expected);
+        });
+
+        it('should remove 3 or more trailing spaces', () => {
+          const transformer = new MarkdownTransformer({
+            trimTrailingWhitespace: true,
+          });
+          const input = 'Line 1   \nLine 2    \n';
+          const expected = 'Line 1\nLine 2\n';
+          expect(transformer.transform(input)).toBe(expected);
+        });
+
+        it('should remove single trailing space', () => {
+          const transformer = new MarkdownTransformer({
+            trimTrailingWhitespace: true,
+          });
+          const input = 'Line 1 \nLine 2\n';
+          const expected = 'Line 1\nLine 2\n';
           expect(transformer.transform(input)).toBe(expected);
         });
       });
@@ -308,7 +326,7 @@ Final paragraph.`;
           removeAlignAttributes: true,
           trimTrailingWhitespace: true,
         });
-        const input = '![](a.png) align="left"  \n![](b.png) align="right"   \n';
+        const input = '![](a.png) align="left"   \n![](b.png) align="right"   \n';
         const expected = '![](a.png)\n![](b.png)\n';
         expect(transformer.transform(input)).toBe(expected);
       });

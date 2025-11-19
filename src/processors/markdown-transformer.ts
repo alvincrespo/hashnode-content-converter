@@ -35,6 +35,8 @@ export interface MarkdownTransformerOptions {
    * @remarks
    * Some Hashnode exports contain trailing spaces (particularly after list items).
    * These are harmless but can be cleaned up if desired.
+   *
+   * Note: Preserves exactly two trailing spaces (markdown hard line break syntax).
    */
   trimTrailingWhitespace?: boolean;
 }
@@ -185,21 +187,36 @@ export class MarkdownTransformer {
   }
 
   /**
-   * Trims trailing whitespace from each line.
+   * Trims trailing whitespace from each line while preserving markdown line breaks.
    *
    * @param markdown - Markdown content
-   * @returns Markdown with trailing whitespace removed
+   * @returns Markdown with trailing whitespace removed, except for markdown hard line breaks
+   *
+   * @remarks
+   * Preserves exactly two trailing spaces (markdown hard line break syntax).
+   * Removes all other trailing whitespace including tabs and excessive spaces.
    *
    * @example
    * ```typescript
-   * // Input:  '* Item 1    \n* Item 2  \n'
+   * // Removes excessive trailing spaces
+   * // Input:  '* Item 1    \n* Item 2   \n'
    * // Output: '* Item 1\n* Item 2\n'
+   *
+   * // Preserves markdown line breaks (exactly 2 spaces)
+   * // Input:  'Line 1  \nLine 2\n'
+   * // Output: 'Line 1  \nLine 2\n'
    * ```
    */
   private trimTrailingWhitespace(markdown: string): string {
     return markdown
       .split('\n')
-      .map(line => line.trimEnd())
+      .map(line => {
+        // Preserve exactly 2 trailing spaces (markdown hard line break)
+        if (line.endsWith('  ') && !line.endsWith('   ')) {
+          return line;
+        }
+        return line.trimEnd();
+      })
       .join('\n');
   }
 }
