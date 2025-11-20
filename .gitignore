@@ -15,3 +15,5 @@ npm-debug.log*
 .env.local
 .env
 .mcp.json
+blog/
+hashnode/
