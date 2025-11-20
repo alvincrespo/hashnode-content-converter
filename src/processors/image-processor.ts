@@ -1,5 +1,295 @@
+import * as fs from 'fs';
+import * as path from 'path';
+import { ImageDownloader } from '../services/image-downloader';
+import type {
+  ImageProcessorOptions,
+  ImageProcessingResult,
+  ImageProcessingError,
+} from '../types/image-processor';
+
+/**
+ * ImageProcessor handles downloading images from Hashnode CDN and updating
+ * markdown references to use local file paths.
+ *
+ * This processor:
+ * - Extracts image URLs from markdown syntax
+ * - Downloads images using the ImageDownloader service
+ * - Replaces CDN URLs with local relative paths
+ * - Skips already-downloaded images using marker-based tracking
+ * - Tracks download failures and HTTP 403 errors
+ * - Implements intelligent retry: skips permanent 403s, retries transient failures
+ *
+ * Marker-Based Retry Strategy:
+ * - Creates `.downloaded-markers/` directory in each blog post directory
+ * - Tracks download attempts with marker files:
+ *   - Success: Empty `.marker` file (e.g., `uuid.png.marker`)
+ *   - Transient failure: `.marker` file with error message (will retry)
+ *   - Permanent failure (403): `.marker.403` file (won't retry)
+ *
+ * @example
+ * ```typescript
+ * const processor = new ImageProcessor({
+ *   maxRetries: 3,
+ *   downloadDelayMs: 200
+ * });
+ *
+ * const result = await processor.process(
+ *   markdown,
+ *   '/path/to/blog/post-slug'
+ * );
+ *
+ * console.log(`Downloaded ${result.imagesDownloaded} images`);
+ * if (result.errors.length > 0) {
+ *   const forbidden = result.errors.filter(e => e.is403);
+ *   console.log(`HTTP 403 errors: ${forbidden.length}`);
+ * }
+ * ```
+ */
 export class ImageProcessor {
-  async process(_markdown: string, _blogDir: string): Promise<string> {
-    throw new Error('Not implemented');
+  private downloader: ImageDownloader;
+  private options: Required<ImageProcessorOptions>;
+
+  /**
+   * Create a new ImageProcessor instance.
+   *
+   * @param options - Configuration options for image downloading
+   */
+  constructor(options?: ImageProcessorOptions) {
+    // Set defaults matching reference implementation
+    this.options = {
+      maxRetries: options?.maxRetries ?? 3,
+      retryDelayMs: options?.retryDelayMs ?? 1000,
+      timeoutMs: options?.timeoutMs ?? 30000,
+      downloadDelayMs: options?.downloadDelayMs ?? 200,
+    };
+
+    // Create ImageDownloader with configuration
+    this.downloader = new ImageDownloader({
+      maxRetries: this.options.maxRetries,
+      retryDelayMs: this.options.retryDelayMs,
+      timeoutMs: this.options.timeoutMs,
+      downloadDelayMs: this.options.downloadDelayMs,
+    });
+  }
+
+  /**
+   * Process markdown content: extract image URLs, download images,
+   * and replace CDN URLs with local relative paths.
+   *
+   * Uses marker-based tracking to enable intelligent retry:
+   * - Skips successfully downloaded images (file + success marker exist)
+   * - Skips permanent HTTP 403 failures (403 marker exists)
+   * - Retries transient failures (error marker or no marker)
+   *
+   * Only replaces CDN URLs with local paths on successful download.
+   * Failed images keep CDN URLs, making missing images visible in rendered markdown.
+   *
+   * @param markdown - Markdown content from MarkdownTransformer
+   * @param blogDir - Absolute path to blog post directory where images should be saved
+   * @returns Processing result with updated markdown and statistics
+   * @throws {Error} If blogDir doesn't exist or isn't accessible
+   *
+   * @example
+   * ```typescript
+   * const result = await processor.process(
+   *   '![Image](https://cdn.hashnode.com/.../uuid.png)',
+   *   '/blog/my-post'
+   * );
+   * // result.markdown === '![Image](./uuid.png)'
+   * // result.imagesDownloaded === 1
+   * ```
+   */
+  async process(
+    markdown: string,
+    blogDir: string
+  ): Promise<ImageProcessingResult> {
+    // Validate directory exists (DECISION 3)
+    if (!fs.existsSync(blogDir)) {
+      throw new Error(
+        `Blog directory does not exist: ${blogDir}. ` +
+          `Ensure Converter creates the directory before calling ImageProcessor.`
+      );
+    }
+
+    const imageMatches = this.extractImageUrls(markdown);
+    const errors: ImageProcessingError[] = [];
+    let imagesDownloaded = 0;
+    let imagesSkipped = 0;
+    let updatedMarkdown = markdown;
+
+    for (const [_fullMatch, url] of imageMatches) {
+      // Extract filename hash using ImageDownloader static method
+      const filename = ImageDownloader.extractHash(url);
+
+      if (!filename) {
+        errors.push({
+          filename: 'unknown',
+          url,
+          error: 'Could not extract hash from URL',
+          is403: false,
+        });
+        continue;
+      }
+
+      const filepath = path.join(blogDir, filename);
+
+      // DECISION 6: Marker-based retry strategy
+      const markerPath = this.getMarkerPath(blogDir, filename);
+      const marker403Path = markerPath + '.403';
+
+      // Check if download succeeded previously (file exists + success marker exists)
+      if (fs.existsSync(filepath) && fs.existsSync(markerPath)) {
+        // Verify it's a success marker (empty file or very small)
+        const stats = fs.statSync(markerPath);
+        if (stats.size === 0) {
+          imagesSkipped++;
+          // Replace URL since file exists
+          updatedMarkdown = updatedMarkdown.replace(url, `./${filename}`);
+          continue;
+        }
+        // If marker has content, it's a transient failure marker - fall through to retry
+      }
+
+      // Check if 403 error occurred previously (permanent failure - don't retry)
+      if (fs.existsSync(marker403Path)) {
+        imagesSkipped++;
+        // Keep CDN URL (shows what's missing in rendered markdown)
+        continue;
+      }
+
+      // Attempt download (either never attempted OR transient failure from previous run)
+      try {
+        const result = await this.downloader.download(url, filepath);
+
+        if (result.success) {
+          // Success: create empty marker file
+          fs.writeFileSync(markerPath, '');
+          imagesDownloaded++;
+          // Replace URL only on successful download
+          updatedMarkdown = updatedMarkdown.replace(url, `./${filename}`);
+        } else if (result.is403) {
+          // HTTP 403: permanent failure, create 403 marker (don't retry)
+          this.recordDownloadFailure(
+            filename,
+            url,
+            result.error || 'HTTP 403 Forbidden',
+            true,
+            blogDir,
+            errors
+          );
+        } else {
+          // Transient failure: create marker with error message (will retry)
+          this.recordDownloadFailure(
+            filename,
+            url,
+            result.error || 'Download failed',
+            false,
+            blogDir,
+            errors
+          );
+        }
+      } catch (error) {
+        // Unexpected error during download: treat as transient failure
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        this.recordDownloadFailure(filename, url, errorMsg, false, blogDir, errors);
+      }
+    }
+
+    // DECISION 5: Return detailed results
+    return {
+      markdown: updatedMarkdown,
+      imagesProcessed: imageMatches.length,
+      imagesDownloaded,
+      imagesSkipped,
+      errors,
+    };
+  }
+
+  /**
+   * Extract all Hashnode CDN image URLs from markdown content.
+   *
+   * @param markdown - Markdown content to parse
+   * @returns Array of [fullMatch, imageUrl] tuples
+   *
+   * @example
+   * ```typescript
+   * const matches = this.extractImageUrls('![alt](https://cdn.hashnode.com/.../image.png)');
+   * // Returns: [['![alt](https://...)', 'https://...']]
+   * ```
+   */
+  private extractImageUrls(markdown: string): Array<[string, string]> {
+    // Regex pattern from reference implementation (convert-hashnode.js:245)
+    // Matches: ![any-text](https://cdn.hashnode.com/any-path)
+    const imageRegex = /!\[[^\]]*\]\((https:\/\/cdn\.hashnode\.com[^)]+)\)/g;
+
+    const matches: Array<[string, string]> = [];
+    let match: RegExpExecArray | null;
+
+    while ((match = imageRegex.exec(markdown)) !== null) {
+      matches.push([match[0], match[1]]);
+    }
+
+    return matches;
+  }
+
+  /**
+   * Get path to marker file for tracking download status.
+   * Creates .downloaded-markers/ directory if it doesn't exist.
+   *
+   * Marker types:
+   * - Empty file: Successful download (skip on re-run)
+   * - File with content: Transient failure (retry on re-run)
+   * - File with .403 extension: Permanent HTTP 403 failure (skip on re-run)
+   *
+   * @param blogDir - Blog post directory
+   * @param filename - Image filename (e.g., "uuid.png")
+   * @returns Path to marker file
+   */
+  private getMarkerPath(blogDir: string, filename: string): string {
+    const markersDir = path.join(blogDir, '.downloaded-markers');
+
+    // Ensure markers directory exists
+    if (!fs.existsSync(markersDir)) {
+      fs.mkdirSync(markersDir, { recursive: true });
+    }
+
+    return path.join(markersDir, `${filename}.marker`);
+  }
+
+  /**
+   * Record a download failure by creating a marker file and tracking the error.
+   *
+   * This method centralizes error handling for failed image downloads. It creates
+   * the appropriate marker file (regular or .403) and adds the error to the tracking array.
+   *
+   * Marker paths:
+   * - Permanent (403): `{filename}.marker.403` - won't retry on re-run
+   * - Transient: `{filename}.marker` with error message - will retry on re-run
+   *
+   * @param filename - Image filename (e.g., "uuid.png")
+   * @param url - Original CDN URL that failed
+   * @param errorMessage - Error description to store in marker
+   * @param isPermanent403 - If true, creates .403 marker; if false, creates regular marker
+   * @param blogDir - Blog post directory
+   * @param errors - Error collection array to append to
+   */
+  private recordDownloadFailure(
+    filename: string,
+    url: string,
+    errorMessage: string,
+    isPermanent403: boolean,
+    blogDir: string,
+    errors: ImageProcessingError[]
+  ): void {
+    const markerPath = this.getMarkerPath(blogDir, filename);
+    const filePath = isPermanent403 ? `${markerPath}.403` : markerPath;
+
+    fs.writeFileSync(filePath, errorMessage);
+    errors.push({
+      filename,
+      url,
+      error: errorMessage,
+      is403: isPermanent403,
+    });
   }
 }

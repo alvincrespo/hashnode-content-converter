@@ -9,3 +9,9 @@ export {
   MarkdownTransformer,
   MarkdownTransformerOptions,
 } from './processors/markdown-transformer';
+export { ImageProcessor } from './processors/image-processor';
+export type {
+  ImageProcessorOptions,
+  ImageProcessingResult,
+  ImageProcessingError,
+} from './types/image-processor';

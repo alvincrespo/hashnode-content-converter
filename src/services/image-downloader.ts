@@ -42,16 +42,15 @@ export class ImageDownloader {
   }
 
   /**
-   * Download a file from a URL and save it to the specified filepath
+   * Download a file from a URL and save it to the specified filepath.
+   * Returns a result object with success status and error details.
+   *
    * @param url - The URL to download from
    * @param filepath - The local path where the file will be saved
-   * @throws Error with details about download failure
+   * @returns Download result with success status, error details, and 403 flag
    */
-  async download(url: string, filepath: string): Promise<void> {
-    const result = await this.downloadWithRetry(url, filepath, 0);
-    if (!result.success) {
-      throw new Error(result.error || 'Unknown error');
-    }
+  async download(url: string, filepath: string): Promise<DownloadResult> {
+    return this.downloadWithRetry(url, filepath, 0);
   }
 
   /**

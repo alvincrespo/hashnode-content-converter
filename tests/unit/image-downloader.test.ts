@@ -40,11 +40,12 @@ describe('ImageDownloader', () => {
       vi.mocked(fs.mkdirSync).mockImplementation(() => '');
       vi.mocked(fs.createWriteStream).mockReturnValue(mockFileStream as any);
 
-      await downloader.download(url, filepath);
+      const result = await downloader.download(url, filepath);
+      expect(result.success).toBe(true);
       expect(fs.createWriteStream).toHaveBeenCalledWith(filepath);
     });
 
-    it('should throw error on download failure', async () => {
+    it('should return error result on download failure', async () => {
       const url = 'https://example.com/image.png';
       const filepath = '/tmp/image.png';
 
@@ -63,7 +64,9 @@ describe('ImageDownloader', () => {
 
       vi.mocked(fs.existsSync).mockReturnValue(true);
 
-      await expect(downloader.download(url, filepath)).rejects.toThrow('Network error');
+      const result = await downloader.download(url, filepath);
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Network error');
     });
 
     it('should handle HTTP 403 errors without retry', async () => {
@@ -74,7 +77,10 @@ describe('ImageDownloader', () => {
       vi.mocked(fs.existsSync).mockReturnValue(false);
       vi.mocked(fs.mkdirSync).mockImplementation(() => '');
 
-      await expect(downloader.download(url, filepath)).rejects.toThrow('HTTP 403');
+      const result = await downloader.download(url, filepath);
+      expect(result.success).toBe(false);
+      expect(result.is403).toBe(true);
+      expect(result.error).toContain('HTTP 403');
     });
 
     it('should handle HTTP 404 errors without retry', async () => {
@@ -85,7 +91,9 @@ describe('ImageDownloader', () => {
       vi.mocked(fs.existsSync).mockReturnValue(false);
       vi.mocked(fs.mkdirSync).mockImplementation(() => '');
 
-      await expect(downloader.download(url, filepath)).rejects.toThrow('HTTP 404');
+      const result = await downloader.download(url, filepath);
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('HTTP 404');
     });
 
     it('should follow 301 redirects', async () => {
@@ -99,8 +107,8 @@ describe('ImageDownloader', () => {
       vi.mocked(fs.mkdirSync).mockImplementation(() => '');
       vi.mocked(fs.createWriteStream).mockReturnValue(mockFileStream as any);
 
-      await downloader.download(url, filepath);
-
+      const result = await downloader.download(url, filepath);
+      expect(result.success).toBe(true);
       expect(https.get).toHaveBeenCalledWith(expect.stringContaining('example.com'), expect.any(Object), expect.any(Function));
     });
 
@@ -115,8 +123,8 @@ describe('ImageDownloader', () => {
       vi.mocked(fs.mkdirSync).mockImplementation(() => '');
       vi.mocked(fs.createWriteStream).mockReturnValue(mockFileStream as any);
 
-      await downloader.download(url, filepath);
-
+      const result = await downloader.download(url, filepath);
+      expect(result.success).toBe(true);
       expect(https.get).toHaveBeenCalled();
     });
 
@@ -128,9 +136,9 @@ describe('ImageDownloader', () => {
       vi.mocked(fs.existsSync).mockReturnValue(false);
       vi.mocked(fs.mkdirSync).mockImplementation(() => '');
 
-      await expect(downloader.download(url, filepath)).rejects.toThrow(
-        'Redirect without location header'
-      );
+      const result = await downloader.download(url, filepath);
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Redirect without location header');
     });
 
     it('should create parent directory if it does not exist', async () => {
@@ -143,8 +151,8 @@ describe('ImageDownloader', () => {
       vi.mocked(fs.mkdirSync).mockImplementation(() => '');
       vi.mocked(fs.createWriteStream).mockReturnValue(mockFileStream as any);
 
-      await downloader.download(url, filepath);
-
+      const result = await downloader.download(url, filepath);
+      expect(result.success).toBe(true);
       expect(fs.mkdirSync).toHaveBeenCalledWith(expect.stringContaining('subdir'), {
         recursive: true,
       });
@@ -171,7 +179,9 @@ describe('ImageDownloader', () => {
       vi.mocked(fs.existsSync).mockReturnValue(false);
       vi.mocked(fs.mkdirSync).mockImplementation(() => '');
 
-      await expect(downloader.download(url, filepath)).rejects.toThrow('Download timeout');
+      const result = await downloader.download(url, filepath);
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Download timeout');
     });
 
     it('should clean up partial file on write error', async () => {
@@ -187,7 +197,9 @@ describe('ImageDownloader', () => {
       vi.mocked(fs.createWriteStream).mockReturnValue(mockFileStream as any);
       vi.mocked(fs.unlinkSync).mockImplementation(() => {});
 
-      await expect(downloader.download(url, filepath)).rejects.toThrow('File write error');
+      const result = await downloader.download(url, filepath);
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('File write error');
       expect(fs.unlinkSync).toHaveBeenCalledWith(filepath);
     });
 
@@ -202,7 +214,9 @@ describe('ImageDownloader', () => {
       vi.mocked(fs.createWriteStream).mockReturnValue(mockFileStream as any);
       vi.mocked(fs.unlinkSync).mockImplementation(() => {});
 
-      await expect(downloader.download(url, filepath)).rejects.toThrow('Stream error');
+      const result = await downloader.download(url, filepath);
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Stream error');
       expect(fs.unlinkSync).toHaveBeenCalledWith(filepath);
     });
   });
@@ -354,8 +368,8 @@ describe('ImageDownloader', () => {
       vi.mocked(fs.mkdirSync).mockImplementation(() => '');
       vi.mocked(fs.createWriteStream).mockReturnValue(mockFileStream as any);
 
-      await downloader.download(url, filepath);
-
+      const result = await downloader.download(url, filepath);
+      expect(result.success).toBe(true);
       expect(attemptCount).toBe(2);
     });
 
@@ -380,7 +394,9 @@ describe('ImageDownloader', () => {
       vi.mocked(fs.existsSync).mockReturnValue(false);
       vi.mocked(fs.mkdirSync).mockImplementation(() => '');
 
-      await expect(downloader.download(url, filepath)).rejects.toThrow('after 2 attempts');
+      const result = await downloader.download(url, filepath);
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('after 2 attempts');
     });
   });
 });
