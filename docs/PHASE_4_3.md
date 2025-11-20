@@ -4,7 +4,7 @@
 **Status**: ✅ COMPLETE
 **Date Started**: 2025-11-19
 **Date Completed**: 2025-11-19
-**Pull Request**: TBD
+**Pull Request**: [#35](https://github.com/alvincrespo/hashnode-content-converter/pull/35)
 
 ---
 
@@ -2246,7 +2246,7 @@ These decisions maintain:
 **Phase 4.3 Start Date**: 2025-11-19
 **Phase 4.3 Completion Date**: 2025-11-19
 **Phase 4.3 Status**: ✅ COMPLETE
-**Pull Request**: TBD
+**Pull Request**: [#35](https://github.com/alvincrespo/hashnode-content-converter/pull/35)
 
 ---
 
