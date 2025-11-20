@@ -3,7 +3,6 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { ImageProcessor } from '../../src/processors/image-processor';
 import { ImageDownloader } from '../../src/services/image-downloader';
-import type { DownloadResult } from '../../src/services/image-downloader';
 
 // Mock modules
 vi.mock('fs');
