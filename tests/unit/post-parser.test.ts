@@ -42,6 +42,7 @@ describe('PostParser', () => {
         brief: 'Test brief',
         contentMarkdown: '# Test Content',
         coverImage: 'https://example.com/image.png',
+        tags: ['test'],
       });
     });
 
@@ -62,6 +63,7 @@ describe('PostParser', () => {
         brief: 'Test brief',
         contentMarkdown: '# Test Content',
         coverImage: undefined,
+        tags: ['test'],
       });
     });
 
@@ -84,6 +86,7 @@ describe('PostParser', () => {
         brief: '',
         contentMarkdown: '# Test Content',
         coverImage: undefined,
+        tags: ['test'],
       });
     });
   });
@@ -484,7 +487,148 @@ describe('PostParser', () => {
     });
   });
 
-  describe('I. Edge Cases', () => {
+  describe('I. Tags Field Validation', () => {
+    it('should successfully parse valid tags array', () => {
+      // Arrange
+      const parser = new PostParser();
+      const post = createValidPost({
+        tags: ['javascript', 'typescript', 'nodejs'],
+      });
+
+      // Act
+      const result = parser.parse(post);
+
+      // Assert
+      expect(result.tags).toEqual(['javascript', 'typescript', 'nodejs']);
+    });
+
+    it('should filter out non-string values from tags array', () => {
+      // Arrange
+      const parser = new PostParser();
+      const post = createValidPost({
+        tags: ['javascript', 123, 'typescript', null, 'nodejs', undefined] as unknown as string[],
+      });
+
+      // Act
+      const result = parser.parse(post);
+
+      // Assert
+      expect(result.tags).toEqual(['javascript', 'typescript', 'nodejs']);
+    });
+
+    it('should filter out empty string tags', () => {
+      // Arrange
+      const parser = new PostParser();
+      const post = createValidPost({
+        tags: ['javascript', '', 'typescript', ''],
+      });
+
+      // Act
+      const result = parser.parse(post);
+
+      // Assert
+      expect(result.tags).toEqual(['javascript', 'typescript']);
+    });
+
+    it('should filter out whitespace-only tags', () => {
+      // Arrange
+      const parser = new PostParser();
+      const post = createValidPost({
+        tags: ['javascript', '   ', 'typescript', '\t\n', 'nodejs'],
+      });
+
+      // Act
+      const result = parser.parse(post);
+
+      // Assert
+      expect(result.tags).toEqual(['javascript', 'typescript', 'nodejs']);
+    });
+
+    it('should trim whitespace from valid tags', () => {
+      // Arrange
+      const parser = new PostParser();
+      const post = createValidPost({
+        tags: ['  javascript  ', 'typescript\n', '\ttypescript\t'],
+      });
+
+      // Act
+      const result = parser.parse(post);
+
+      // Assert
+      expect(result.tags).toEqual(['javascript', 'typescript', 'typescript']);
+    });
+
+    it('should return undefined when tags array is empty', () => {
+      // Arrange
+      const parser = new PostParser();
+      const post = createValidPost({
+        tags: [],
+      });
+
+      // Act
+      const result = parser.parse(post);
+
+      // Assert
+      expect(result.tags).toBeUndefined();
+    });
+
+    it('should return undefined when all tags are invalid', () => {
+      // Arrange
+      const parser = new PostParser();
+      const post = createValidPost({
+        tags: ['', '   ', 123, null] as unknown as string[],
+      });
+
+      // Act
+      const result = parser.parse(post);
+
+      // Assert
+      expect(result.tags).toBeUndefined();
+    });
+
+    it('should return undefined when tags field is missing', () => {
+      // Arrange
+      const parser = new PostParser();
+      const post = createValidPost();
+      delete (post as unknown as Record<string, unknown>).tags;
+
+      // Act
+      const result = parser.parse(post);
+
+      // Assert
+      expect(result.tags).toBeUndefined();
+    });
+
+    it('should return undefined when tags is null', () => {
+      // Arrange
+      const parser = new PostParser();
+      const post = createValidPost({
+        tags: null as unknown as string[],
+      });
+
+      // Act
+      const result = parser.parse(post);
+
+      // Assert
+      expect(result.tags).toBeUndefined();
+    });
+
+    it('should return undefined when tags is not an array', () => {
+      // Arrange
+      const parser = new PostParser();
+      const post = createValidPost({
+        tags: 'not-an-array' as unknown as string[],
+      });
+
+      // Act
+      const result = parser.parse(post);
+
+      // Assert
+      expect(result.tags).toBeUndefined();
+    });
+  });
+
+  describe('J. Edge Cases', () => {
     it('should handle very long contentMarkdown (10,000+ characters)', () => {
       // Arrange
       const parser = new PostParser();

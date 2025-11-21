@@ -10,6 +10,10 @@ export {
   MarkdownTransformerOptions,
 } from './processors/markdown-transformer';
 export { ImageProcessor } from './processors/image-processor';
+export {
+  FrontmatterGenerator,
+} from './processors/frontmatter-generator';
+
 export type {
   ImageProcessorOptions,
   ImageProcessingResult,
