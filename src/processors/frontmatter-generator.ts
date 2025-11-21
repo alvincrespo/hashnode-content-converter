@@ -29,7 +29,7 @@ export class FrontmatterGenerator {
       try {
         const date = new Date(metadata.dateAdded);
         lines.push(`date: ${date.toISOString()}`);
-      } catch (e) {
+      } catch (_e) {
         // Fallback to original string if parsing fails (though PostParser should catch this)
         lines.push(`date: ${metadata.dateAdded}`);
       }
