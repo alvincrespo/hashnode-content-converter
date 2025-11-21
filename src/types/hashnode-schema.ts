@@ -29,4 +29,5 @@ export interface PostMetadata {
   brief: string;
   contentMarkdown: string;
   coverImage?: string;
+  tags?: string[];
 }

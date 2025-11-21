@@ -32,6 +32,7 @@ export class PostParser {
       brief: this.extractBrief(post),
       contentMarkdown: this.extractContentMarkdown(post),
       coverImage: this.extractCoverImage(post),
+      tags: this.extractTags(post),
     };
 
     return metadata;
@@ -132,5 +133,16 @@ export class PostParser {
       return undefined;
     }
     return post.coverImage.trim();
+  }
+
+  /**
+   * Extract optional tags field
+   */
+  private extractTags(post: HashnodePost): string[] | undefined {
+    // tags is optional - return undefined if not present or empty
+    if (!post.tags || !Array.isArray(post.tags) || post.tags.length === 0) {
+      return undefined;
+    }
+    return post.tags;
   }
 }
