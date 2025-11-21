@@ -29,7 +29,7 @@ export class FrontmatterGenerator {
       try {
         const date = new Date(metadata.dateAdded);
         lines.push(`date: ${date.toISOString()}`);
-      } catch (_e) {
+      } catch {
         // Fallback to original string if parsing fails (though PostParser should catch this)
         lines.push(`date: ${metadata.dateAdded}`);
       }
@@ -58,12 +58,15 @@ export class FrontmatterGenerator {
   }
 
   /**
-   * Escapes double quotes in a string to ensure valid YAML
+   * Escapes backslashes and double quotes in a string to ensure valid YAML
+   *
+   * Backslashes must be escaped first to avoid double-escaping issues.
+   * For example, `text\"more` should become `text\\"more`, not `text\\"more`.
    *
    * @param str - The string to escape
    * @returns The escaped string
    */
   private escapeString(str: string): string {
-    return str.replace(/"/g, '\\"');
+    return str.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
   }
 }

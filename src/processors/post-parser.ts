@@ -137,12 +137,23 @@ export class PostParser {
 
   /**
    * Extract optional tags field
+   *
+   * Validates that all tags are non-empty strings and filters out
+   * any invalid or whitespace-only entries.
    */
   private extractTags(post: HashnodePost): string[] | undefined {
     // tags is optional - return undefined if not present or empty
     if (!post.tags || !Array.isArray(post.tags) || post.tags.length === 0) {
       return undefined;
     }
-    return post.tags;
+
+    // Filter out non-string values and empty/whitespace-only strings
+    const validTags = post.tags
+      .filter((tag): tag is string => typeof tag === 'string')
+      .map(tag => tag.trim())
+      .filter(tag => tag.length > 0);
+
+    // Return undefined if no valid tags remain
+    return validTags.length > 0 ? validTags : undefined;
   }
 }

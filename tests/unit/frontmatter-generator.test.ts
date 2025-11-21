@@ -38,6 +38,36 @@ describe('FrontmatterGenerator', () => {
     expect(result).toContain('description: "Description with \\"quotes\\""');
   });
 
+  it('should escape backslashes in strings', () => {
+    const metadata: PostMetadata = {
+      title: 'Post with \\ backslash',
+      slug: 'post-with-backslash',
+      dateAdded: '2023-01-01T12:00:00.000Z',
+      brief: 'Description with \\ backslash',
+      contentMarkdown: 'Content',
+    };
+
+    const result = generator.generate(metadata);
+
+    expect(result).toContain('title: "Post with \\\\ backslash"');
+    expect(result).toContain('description: "Description with \\\\ backslash"');
+  });
+
+  it('should escape both backslashes and quotes correctly', () => {
+    const metadata: PostMetadata = {
+      title: 'text\\"more',
+      slug: 'test-slug',
+      dateAdded: '2023-01-01T12:00:00.000Z',
+      brief: 'brief with \\"mixed',
+      contentMarkdown: 'Content',
+    };
+
+    const result = generator.generate(metadata);
+
+    expect(result).toContain('title: "text\\\\\\"more"');
+    expect(result).toContain('description: "brief with \\\\\\"mixed"');
+  });
+
   it('should handle optional coverImage', () => {
     const metadata: PostMetadata = {
       title: 'Post',
