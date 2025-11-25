@@ -9,13 +9,6 @@ import { FrontmatterGenerator } from '../../src/processors/frontmatter-generator
 import { FileWriter } from '../../src/services/file-writer';
 import { Logger } from '../../src/services/logger';
 import { HashnodePost } from '../../src/types/hashnode-schema';
-import {
-  ConversionStartingEvent,
-  ConversionCompletedEvent,
-  ConversionErrorEvent,
-  ImageDownloadedEvent,
-} from '../../src/types/converter-events';
-
 // Mock fs module
 vi.mock('fs');
 
