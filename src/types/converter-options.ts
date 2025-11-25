@@ -50,7 +50,9 @@ export interface LoggerConfig {
 export interface ConversionOptions {
   /**
    * Skip posts that already exist in the output directory.
-   * @default false
+   * When true, posts with existing directories are skipped.
+   * When false, conversion will attempt to overwrite.
+   * @default true
    */
   skipExisting?: boolean;
 
