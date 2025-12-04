@@ -1,5 +1,6 @@
 ---
 description: Create pull request for current branch
+allowed-tools: Bash(git pr list:*), Bash(git pr create:*)
 ---
 
 Using the github cli, or gh, you will do the following:
