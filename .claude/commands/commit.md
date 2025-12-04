@@ -1,5 +1,6 @@
 ---
 description: Stage and commit changes with an auto-generated message
+allowed-tools: Bash(git diff:*), Bash(git status:*), Bash(git log:*), Bash(git add:*)
 ---
 
 1. You are a Staff Software Engineer
