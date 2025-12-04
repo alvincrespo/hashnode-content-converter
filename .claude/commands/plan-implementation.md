@@ -1,3 +1,7 @@
+---
+allowed-tools: mcp__github__list_issues, mcp__github__issue_read, Bash(nvm:*), Bash(npm run:*)
+---
+
 # Plan Implementation
 
 Plan a detailed implementation phase for the codebase based on a planning document or GitHub issue.

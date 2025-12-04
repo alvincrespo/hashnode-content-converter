@@ -406,24 +406,35 @@ Extract the conversion logic into a modular, well-typed TypeScript npm package (
 
 ### Phase 6: CLI Implementation
 
-#### Step 6.1: Implement CLI Interface
-- Create `src/cli/convert.ts`
-- Use commander.js or similar for argument parsing
-- Implement command: `convert`
-- Arguments:
-  - `--export <path>` - Path to Hashnode export JSON
-  - `--output <path>` - Output directory for converted posts
-  - `--log-file <path>` - Optional log file path
-  - `--skip-existing` - Skip posts that already exist
-- Implement options parsing and validation
-- Call Converter with parsed options
-- Display progress and results
-- Exit with appropriate status code
+#### Step 6.1: Implement CLI Interface ✅ COMPLETE (2025-12-04)
+- ✅ Create `src/cli/convert.ts`
+- ✅ Use commander.js for argument parsing
+- ✅ Implement command: `convert`
+- ✅ Arguments:
+  - ✅ `-e, --export <path>` - Path to Hashnode export JSON
+  - ✅ `-o, --output <path>` - Output directory for converted posts
+  - ✅ `-l, --log-file <path>` - Optional log file path
+  - ✅ `--no-skip-existing` - Overwrite posts that already exist
+  - ✅ `-v, --verbose` - Enable verbose output
+  - ✅ `-q, --quiet` - Suppress progress output
+- ✅ Implement isolated validation functions:
+  - ✅ `validateExportPath()` - Verify export file exists
+  - ✅ `validateExportIsFile()` - Verify path is a file
+  - ✅ `validateExportJson()` - Verify valid JSON content
+  - ✅ `validateOutputPath()` - Verify parent directory exists
+  - ✅ `validateLogFilePath()` - Verify log file parent exists
+  - ✅ `validateMutuallyExclusiveFlags()` - Verify --verbose/--quiet not combined
+  - ✅ `validateOptions()` - Orchestrate all validators
+- ✅ Call Converter.withProgress() with parsed options
+- ✅ Display progress bar and results summary
+- ✅ Exit with appropriate status code (0=success, 1=errors)
+- ✅ 45 unit tests with comprehensive coverage
+- ✅ 358 total tests passing with 99.36% coverage
 
-#### Step 6.2: Add CLI Entry Point
-- Update `package.json` bin field to point to CLI
-- Create shell script wrapper if needed
-- Test CLI invocation: `npx @alvin/hashnode-content-converter convert --help`
+#### Step 6.2: Add CLI Entry Point ✅ COMPLETE (2025-12-04)
+- ✅ Update `package.json` bin field to point to CLI
+- ✅ CLI invocation works: `node dist/cli/convert.js --help`
+- ✅ Convert command help: `node dist/cli/convert.js convert --help`
 
 ### Phase 7: Testing & Quality
 
