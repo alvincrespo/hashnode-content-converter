@@ -550,6 +550,22 @@ describe('Converter', () => {
         })
       );
     });
+
+    it('should support once() for single-fire event subscription', async () => {
+      const startingHandler = vi.fn();
+      converter.once('conversion-starting', startingHandler);
+
+      // Create export with 2 posts
+      const multiExport = {
+        posts: [samplePost, { ...samplePost, slug: 'test-post-2' }],
+      };
+      vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(multiExport));
+
+      await converter.convertAllPosts('/path/to/export.json', '/output');
+
+      // once() should only fire for the first post, not the second
+      expect(startingHandler).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('Logger Integration', () => {
