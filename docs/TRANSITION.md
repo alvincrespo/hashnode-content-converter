@@ -392,15 +392,17 @@ Extract the conversion logic into a modular, well-typed TypeScript npm package (
 - ✅ 99.27% test coverage achieved (51 tests passing)
 - ✅ Pull Request #37, Issue #8
 
-#### Step 5.2: Create Public API Entry Point
-- Create `src/index.ts`
-- Export:
-  - `Converter` class
-  - All type definitions
-  - Services (for advanced users)
-  - Processors (for advanced users)
-  - Factory functions for common configurations
-- Document usage examples
+#### Step 5.2: Create Public API Entry Point ✅ COMPLETE (2025-12-04)
+- ✅ Updated `src/index.ts` with module-level JSDoc
+- ✅ Export:
+  - ✅ `Converter` class with static factory methods
+  - ✅ All type definitions
+  - ✅ Services (ImageDownloader, FileWriter, Logger) with config types
+  - ✅ Processors (PostParser, MarkdownTransformer, ImageProcessor, FrontmatterGenerator)
+  - ✅ Factory methods: `Converter.fromExportFile()`, `Converter.withProgress()`
+- ✅ Additional exports: `ImageDownloadConfig`, `DownloadResult`, `FileWriterConfig`, `FileWriteError`
+- ✅ Document usage examples in README.md
+- ✅ 313 tests passing with 99.36% coverage
 
 ### Phase 6: CLI Implementation
 
