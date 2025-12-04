@@ -17,3 +17,4 @@ npm-debug.log*
 .mcp.json
 blog/
 hashnode/
+.DS_Store

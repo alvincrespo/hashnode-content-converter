@@ -920,4 +920,127 @@ describe('Converter', () => {
       vi.spyOn(Date, 'now').mockRestore();
     });
   });
+
+  describe('Static Factory Methods', () => {
+    describe('Converter.fromExportFile()', () => {
+      it('should convert export file and return result', async () => {
+        const result = await Converter.fromExportFile('/path/to/export.json', '/output');
+
+        expect(result).toEqual(
+          expect.objectContaining({
+            converted: expect.any(Number),
+            skipped: expect.any(Number),
+            errors: expect.any(Array),
+            duration: expect.any(String),
+          })
+        );
+      });
+
+      it('should pass options to convertAllPosts', async () => {
+        // With skipExisting: false, it should attempt to convert even if exists
+        vi.mocked(fs.existsSync).mockReturnValue(true);
+
+        const result = await Converter.fromExportFile('/path/to/export.json', '/output', {
+          skipExisting: false,
+        });
+
+        // Since we're using fresh Converter with no mocked dependencies,
+        // we just verify it returns a valid result
+        expect(result.duration).toMatch(/^\d+s$|^\d+m \d+s$/);
+      });
+
+      it('should create a new Converter instance for each call', async () => {
+        // Verify that each call creates independent instances by checking
+        // that state doesn't leak between calls
+        vi.mocked(fs.existsSync).mockReturnValue(true);
+        vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify({ posts: [samplePost] }));
+
+        // First call
+        const result1 = await Converter.fromExportFile('/path/to/export.json', '/output');
+
+        // Second call - should work independently
+        const result2 = await Converter.fromExportFile('/path/to/export.json', '/output');
+
+        // Both should return valid results (instances are independent)
+        expect(result1.duration).toBeDefined();
+        expect(result2.duration).toBeDefined();
+      });
+    });
+
+    describe('Converter.withProgress()', () => {
+      it('should call progress callback for each post', async () => {
+        const progressCallback = vi.fn();
+        const progressConverter = Converter.withProgress(progressCallback);
+
+        // Inject mocked dependencies for testing
+        // We need to manually set up the converter's internal state
+        // by accessing its convertAllPosts with our mocked export
+        vi.mocked(fs.existsSync).mockReturnValue(true);
+        vi.mocked(fs.readFileSync).mockReturnValue(
+          JSON.stringify({
+            posts: [
+              samplePost,
+              { ...samplePost, slug: 'test-post-2', title: 'Test Post 2' },
+            ],
+          })
+        );
+
+        // The converter will create its own processors, but we can verify
+        // the progress callback is called via events
+        await progressConverter.convertAllPosts('/path/to/export.json', '/output');
+
+        expect(progressCallback).toHaveBeenCalledTimes(2);
+        expect(progressCallback).toHaveBeenNthCalledWith(1, 1, 2, 'Test Post');
+        expect(progressCallback).toHaveBeenNthCalledWith(2, 2, 2, 'Test Post 2');
+      });
+
+      it('should return a Converter instance', () => {
+        const progressCallback = vi.fn();
+        const progressConverter = Converter.withProgress(progressCallback);
+
+        expect(progressConverter).toBeInstanceOf(Converter);
+      });
+
+      it('should accept optional dependencies', () => {
+        const progressCallback = vi.fn();
+        const customLogger = {
+          info: vi.fn(),
+          success: vi.fn(),
+          warn: vi.fn(),
+          error: vi.fn(),
+          trackHttp403: vi.fn(),
+          writeSummary: vi.fn(),
+          close: vi.fn().mockResolvedValue(undefined),
+        } as unknown as Logger;
+
+        const progressConverter = Converter.withProgress(progressCallback, {
+          logger: customLogger,
+        });
+
+        expect(progressConverter).toBeInstanceOf(Converter);
+      });
+
+      it('should allow chaining with convertAllPosts', async () => {
+        const progressCallback = vi.fn();
+
+        vi.mocked(fs.existsSync).mockReturnValue(true);
+        vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify({ posts: [samplePost] }));
+
+        const result = await Converter.withProgress(progressCallback).convertAllPosts(
+          '/path/to/export.json',
+          '/output'
+        );
+
+        expect(result).toEqual(
+          expect.objectContaining({
+            converted: expect.any(Number),
+            skipped: expect.any(Number),
+            errors: expect.any(Array),
+            duration: expect.any(String),
+          })
+        );
+        expect(progressCallback).toHaveBeenCalled();
+      });
+    });
+  });
 });

@@ -98,6 +98,80 @@ export class Converter extends EventEmitter {
     }
   }
 
+  // ==================== Static Factory Methods ====================
+
+  /**
+   * Quick conversion of a Hashnode export file.
+   * Creates a Converter and runs the full pipeline.
+   *
+   * This is the simplest way to convert a Hashnode export:
+   *
+   * @param exportPath - Path to Hashnode export JSON file
+   * @param outputDir - Output directory for converted posts
+   * @param options - Optional conversion options
+   * @returns Conversion result with statistics
+   *
+   * @example
+   * ```typescript
+   * // One-liner conversion
+   * const result = await Converter.fromExportFile('./export.json', './blog');
+   * console.log(`Converted ${result.converted} posts`);
+   *
+   * // With options
+   * const result = await Converter.fromExportFile('./export.json', './blog', {
+   *   skipExisting: false,
+   *   downloadOptions: { downloadDelayMs: 100 }
+   * });
+   * ```
+   */
+  static async fromExportFile(
+    exportPath: string,
+    outputDir: string,
+    options?: ConversionOptions
+  ): Promise<ConversionResult> {
+    const converter = new Converter();
+    return converter.convertAllPosts(exportPath, outputDir, options);
+  }
+
+  /**
+   * Create a Converter with a simple progress callback.
+   * Provides a simpler alternative to the full event API.
+   *
+   * The callback is invoked before each post conversion starts,
+   * receiving the current index (1-based), total count, and post title.
+   *
+   * @param onProgress - Callback invoked before each post conversion
+   * @param deps - Optional dependencies for customization
+   * @returns Configured Converter instance with progress handler attached
+   *
+   * @example
+   * ```typescript
+   * // Simple progress logging
+   * const converter = Converter.withProgress((current, total, title) => {
+   *   console.log(`[${current}/${total}] ${title}`);
+   * });
+   * const result = await converter.convertAllPosts('./export.json', './blog');
+   *
+   * // With custom dependencies
+   * const converter = Converter.withProgress(
+   *   (i, n, t) => progressBar.update(i / n),
+   *   { logger: customLogger }
+   * );
+   * ```
+   */
+  static withProgress(
+    onProgress: (current: number, total: number, title: string) => void,
+    deps?: ConverterDependencies
+  ): Converter {
+    const converter = new Converter(deps);
+    converter.on('conversion-starting', ({ index, total, post }) => {
+      onProgress(index, total, post.title);
+    });
+    return converter;
+  }
+
+  // ==================== Event Methods ====================
+
   /**
    * Type-safe event subscription.
    * @param event - Event name to listen for

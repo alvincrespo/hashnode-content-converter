@@ -13,7 +13,7 @@ Convert Hashnode blog exports to framework-agnostic Markdown with YAML frontmatt
 - **Markdown Transformation**: Clean Hashnode-specific formatting quirks (align attributes, trailing whitespace)
 - **Image Localization**: Download CDN images and replace URLs with local paths
 - **Intelligent Retry**: Marker-based strategy to skip already-downloaded images and permanent failures
-- **YAML Frontmatter**: Generate framework-agnostic frontmatter from post metadata *(coming soon)*
+- **YAML Frontmatter**: Generate framework-agnostic frontmatter from post metadata
 - **Atomic File Operations**: Safe, atomic writes with directory traversal protection
 - **Comprehensive Logging**: Dual-channel output (console + file) with detailed error tracking
 - **Type-Safe**: Full TypeScript with strict mode and comprehensive test coverage (98%+)
@@ -41,7 +41,69 @@ npx @alvin/hashnode-content-converter convert \
 
 ### Programmatic API
 
-You can use the individual processors and services directly:
+#### Quick Start
+
+The simplest way to convert a Hashnode export:
+
+```typescript
+import { Converter } from '@alvin/hashnode-content-converter';
+
+// One-liner conversion
+const result = await Converter.fromExportFile('./export.json', './blog');
+console.log(`Converted ${result.converted} posts in ${result.duration}`);
+```
+
+#### With Progress Tracking
+
+Track conversion progress with a simple callback:
+
+```typescript
+import { Converter } from '@alvin/hashnode-content-converter';
+
+const converter = Converter.withProgress((current, total, title) => {
+  console.log(`[${current}/${total}] Converting: ${title}`);
+});
+
+const result = await converter.convertAllPosts('./export.json', './blog');
+```
+
+#### Full Control with Events
+
+For complete control, use the event-driven API:
+
+```typescript
+import { Converter } from '@alvin/hashnode-content-converter';
+
+const converter = new Converter();
+
+// Progress tracking
+converter.on('conversion-starting', ({ index, total, post }) => {
+  console.log(`[${index}/${total}] Starting: ${post.title}`);
+});
+
+converter.on('conversion-completed', ({ result, durationMs }) => {
+  console.log(`Completed in ${durationMs}ms: ${result.title}`);
+});
+
+// Error handling
+converter.on('conversion-error', ({ type, slug, message }) => {
+  console.error(`[${type}] ${slug}: ${message}`);
+});
+
+// Image tracking
+converter.on('image-downloaded', ({ filename, success, is403 }) => {
+  if (!success) console.warn(`Failed to download: ${filename}`);
+});
+
+const result = await converter.convertAllPosts('./export.json', './blog', {
+  skipExisting: true,
+  downloadOptions: { downloadDelayMs: 100 }
+});
+```
+
+#### Advanced: Custom Processors
+
+For custom pipelines, use individual processors:
 
 ```typescript
 import {
@@ -49,61 +111,46 @@ import {
   MarkdownTransformer,
   ImageProcessor,
   FrontmatterGenerator,
-  ImageDownloader,
-  FileWriter,
-  Logger
+  FileWriter
 } from '@alvin/hashnode-content-converter';
 
-// Parse Hashnode post metadata
+// Parse metadata
 const parser = new PostParser();
 const metadata = parser.parse(hashnodePost);
 
-// Transform markdown content
-const transformer = new MarkdownTransformer({
-  removeAlignAttributes: true,
-  trimTrailingWhitespace: true
-});
-const cleanedMarkdown = await transformer.transform(post.contentMarkdown);
+// Transform markdown
+const transformer = new MarkdownTransformer({ trimTrailingWhitespace: true });
+const cleanedMarkdown = transformer.transform(metadata.contentMarkdown);
 
-// Download and localize images
-const imageProcessor = new ImageProcessor(
-  new ImageDownloader(),
-  new Logger()
-);
-const localizedMarkdown = await imageProcessor.process(
-  cleanedMarkdown,
-  './images',
-  { downloadDelayMs: 100 }
-);
+// Process images
+const imageProcessor = new ImageProcessor({ downloadDelayMs: 100 });
+const imageResult = await imageProcessor.process(cleanedMarkdown, './blog/my-post');
 
-// Generate frontmatter (coming soon)
+// Generate frontmatter
 const generator = new FrontmatterGenerator();
 const frontmatter = generator.generate(metadata);
 
-// Write final markdown file
+// Write file
 const writer = new FileWriter();
-await writer.writeFile(
-  './blog/my-post.md',
-  `${frontmatter}\n\n${localizedMarkdown}`
-);
+await writer.writePost('./blog', metadata.slug, frontmatter, imageResult.markdown);
 ```
 
 ## Current Status
 
 **Completed Components** (98%+ test coverage):
+- ✅ Converter - Main orchestrator with event-driven progress tracking
 - ✅ PostParser - Extract metadata from Hashnode posts
 - ✅ MarkdownTransformer - Clean Hashnode-specific formatting
 - ✅ ImageProcessor - Download and localize images with marker-based retry
+- ✅ FrontmatterGenerator - Generate YAML frontmatter from metadata
 - ✅ ImageDownloader - HTTP downloads with retry logic and 403 tracking
 - ✅ FileWriter - Atomic file operations with path validation
 - ✅ Logger - Dual-channel logging with error tracking
 
 **In Progress**:
-- ⏳ FrontmatterGenerator - Generate YAML frontmatter from metadata
-- ⏳ Converter - Main orchestrator coordinating the pipeline
 - ⏳ CLI - Command-line interface
 
-See [TRANSITION.md](TRANSITION.md) for the complete implementation roadmap.
+See [docs/TRANSITION.md](docs/TRANSITION.md) for the complete implementation roadmap.
 
 ## Architecture
 
