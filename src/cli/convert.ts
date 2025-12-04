@@ -174,7 +174,8 @@ export function validateOptions(options: CLIOptions): ValidatedOptions {
  */
 export function createProgressBar(percentage: number): string {
   const width = 20;
-  const filled = Math.round(width * (percentage / 100));
+  const clampedPercentage = Math.max(0, Math.min(100, percentage));
+  const filled = Math.round(width * (clampedPercentage / 100));
   const empty = width - filled;
   return `[${'='.repeat(filled)}${' '.repeat(empty)}]`;
 }
