@@ -413,6 +413,35 @@ describe('Converter', () => {
 
       expect(result.errors[0].slug).toBe('unknown-post-0');
     });
+
+    it('should handle unexpected errors in post processing loop', async () => {
+      // Make logger.success throw to trigger outer catch block
+      vi.mocked(mockLogger.success).mockImplementation(() => {
+        throw new Error('Unexpected logger failure');
+      });
+
+      const errorHandler = vi.fn();
+      converter.on('conversion-error', errorHandler);
+
+      const result = await converter.convertAllPosts('/path/to/export.json', '/output');
+
+      // Error should be caught and tracked
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0].error).toContain('Unexpected logger failure');
+
+      // Should emit error event with type 'fatal'
+      expect(errorHandler).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'fatal',
+          slug: 'test-post',
+          message: expect.stringContaining('Unexpected logger failure'),
+        })
+      );
+
+      // converted++ happens BEFORE logger.success(), so count is 1
+      // but error is also tracked because logger threw after increment
+      expect(result.converted).toBe(1);
+    });
   });
 
   describe('Event Emission', () => {
