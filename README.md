@@ -5,7 +5,7 @@
 
 Convert Hashnode blog exports to framework-agnostic Markdown with YAML frontmatter. This TypeScript package transforms your Hashnode content into portable Markdown files with proper frontmatter, localized images, and cleaned formatting—ready for any static site generator or blog platform.
 
-> **Status**: Core implementation in progress (4 of 5 major components complete). See [Current Status](#current-status) for details.
+> **Status**: Production-ready with 99.36% test coverage. All core components, CLI, and programmatic API are complete.
 
 ## Features
 
@@ -28,16 +28,45 @@ npm install @alvin/hashnode-content-converter
 
 ## Usage
 
-### CLI (Coming Soon)
+### CLI
 
-Once implementation is complete, the CLI will provide a simple interface:
+The CLI provides a simple interface for converting Hashnode exports:
 
 ```bash
+# Basic usage
+npx @alvin/hashnode-content-converter convert \
+  --export ./hashnode/export-articles.json \
+  --output ./blog
+
+# With all options
 npx @alvin/hashnode-content-converter convert \
   --export ./hashnode/export-articles.json \
   --output ./blog \
-  --log-file ./conversion.log
+  --log-file ./conversion.log \
+  --verbose
+
+# Overwrite existing posts (default is to skip)
+npx @alvin/hashnode-content-converter convert \
+  --export ./export.json \
+  --output ./blog \
+  --no-skip-existing
 ```
+
+**Options**:
+
+| Option | Short | Description | Default |
+|--------|-------|-------------|---------|
+| `--export <path>` | `-e` | Path to Hashnode export JSON file | Required |
+| `--output <path>` | `-o` | Output directory for converted posts | Required |
+| `--log-file <path>` | `-l` | Path to log file | Optional |
+| `--skip-existing` | | Skip posts that already exist | `true` |
+| `--no-skip-existing` | | Overwrite existing posts | |
+| `--verbose` | `-v` | Show detailed output including image downloads | `false` |
+| `--quiet` | `-q` | Suppress all output except errors | `false` |
+
+**Exit Codes**:
+- `0` - Conversion completed successfully
+- `1` - Conversion completed with errors, or validation failed
 
 ### Programmatic API
 
@@ -137,20 +166,21 @@ await writer.writePost('./blog', metadata.slug, frontmatter, imageResult.markdow
 
 ## Current Status
 
-**Completed Components** (98%+ test coverage):
-- ✅ Converter - Main orchestrator with event-driven progress tracking
-- ✅ PostParser - Extract metadata from Hashnode posts
-- ✅ MarkdownTransformer - Clean Hashnode-specific formatting
-- ✅ ImageProcessor - Download and localize images with marker-based retry
-- ✅ FrontmatterGenerator - Generate YAML frontmatter from metadata
-- ✅ ImageDownloader - HTTP downloads with retry logic and 403 tracking
-- ✅ FileWriter - Atomic file operations with path validation
-- ✅ Logger - Dual-channel logging with error tracking
+All components are **feature-complete** with 99.36% test coverage (363 tests):
 
-**In Progress**:
-- ⏳ CLI - Command-line interface
+| Component | Description | Coverage |
+|-----------|-------------|----------|
+| Converter | Main orchestrator with event-driven progress tracking | 99.27% |
+| PostParser | Extract metadata from Hashnode posts | 100% |
+| MarkdownTransformer | Clean Hashnode-specific formatting | 100% |
+| ImageProcessor | Download and localize images with marker-based retry | 98%+ |
+| FrontmatterGenerator | Generate YAML frontmatter from metadata | 100% |
+| ImageDownloader | HTTP downloads with retry logic and 403 tracking | 98.36% |
+| FileWriter | Atomic file operations with path validation | 97.77% |
+| Logger | Dual-channel logging with error tracking | 98.85% |
+| CLI | Command-line interface with progress display | 98%+ |
 
-See [docs/TRANSITION.md](docs/TRANSITION.md) for the complete implementation roadmap.
+See [docs/TRANSITION.md](docs/TRANSITION.md) for the complete implementation history.
 
 ## Architecture
 
@@ -177,7 +207,7 @@ Logger (track results & errors)
 - [src/processors/](src/processors/) - Content transformation classes
 - [src/services/](src/services/) - Infrastructure services (HTTP, filesystem, logging)
 - [src/cli/](src/cli/) - Command-line interface
-- [tests/](tests/) - Unit and integration tests (227 tests, 3,248 lines)
+- [tests/](tests/) - Unit and integration tests (363 tests, 99.36% coverage)
 
 ## Development
 
@@ -225,21 +255,72 @@ npm run prepublishOnly
 
 The project uses Vitest with comprehensive test coverage:
 
-- **227 unit tests** across 6 test files
-- **98%+ average coverage** for implemented components
+- **363 tests** with **99.36% code coverage**
 - **Test patterns**: AAA (Arrange-Act-Assert), mocked dependencies, comprehensive edge cases
-- **Coverage targets**: 80%+ overall, 90%+ for new implementations
+
+| Test Suite | Tests |
+|------------|-------|
+| Unit Tests | 305 |
+| Integration Tests | 58 |
 
 ```bash
 npm run test:coverage  # Generate detailed coverage report
 ```
 
+## Migrating from convert-hashnode.js
+
+If you're migrating from the original `convert-hashnode.js` script, here are the key differences:
+
+### Configuration Changes
+
+| Original Script | This Package |
+|-----------------|--------------|
+| Environment variables (`EXPORT_DIR`, `READ_DIR`) | CLI arguments (`--export`, `--output`) |
+| Hardcoded paths | User-specified paths |
+| Single output format | Same output format, more control |
+
+### Migration Steps
+
+1. **Install the package**:
+   ```bash
+   npm install @alvin/hashnode-content-converter
+   ```
+
+2. **Replace script invocation**:
+   ```bash
+   # Old way (convert-hashnode.js)
+   EXPORT_DIR=blog READ_DIR=blog node convert-hashnode.js
+
+   # New way
+   npx @alvin/hashnode-content-converter convert \
+     --export ./hashnode/export-articles.json \
+     --output ./blog
+   ```
+
+3. **Output format**: The generated Markdown files maintain the same structure:
+   - YAML frontmatter with title, date, description, cover image
+   - Cleaned markdown content (align attributes removed)
+   - Downloaded images in post directories
+
+### Programmatic Migration
+
+If you were importing functions from the original JavaScript script, you can now use the new typed API:
+
+```javascript
+// Old: CommonJS JavaScript (no type information)
+const { processPost, downloadImage } = require('./convert-hashnode');
+```
+
+```typescript
+// New: TypeScript with full type support
+import { Converter, PostParser, ImageProcessor } from '@alvin/hashnode-content-converter';
+```
+
 ## Documentation
 
-- [TRANSITION.md](TRANSITION.md) - Comprehensive architecture and implementation roadmap
-- [CLAUDE.md](CLAUDE.md) - Project guidelines for Claude Code
-- [docs/PHASE_*.md](docs/) - Phase-by-phase implementation tracking
-- [docs/CONVENTIONS.md](docs/CONVENTIONS.md) - Code style conventions
+- [docs/TRANSITION.md](docs/TRANSITION.md) - Architecture and implementation history
+- [CLAUDE.md](CLAUDE.md) - Project guidelines for development
+- [docs/phases/](docs/phases/) - Phase-by-phase implementation plans
 
 ## Contributing
 
