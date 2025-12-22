@@ -207,7 +207,7 @@ Logger (track results & errors)
 - [src/processors/](src/processors/) - Content transformation classes
 - [src/services/](src/services/) - Infrastructure services (HTTP, filesystem, logging)
 - [src/cli/](src/cli/) - Command-line interface
-- [tests/](tests/) - Unit and integration tests (227 tests, 3,248 lines)
+- [tests/](tests/) - Unit and integration tests (363 tests, 99.36% coverage)
 
 ## Development
 
@@ -255,10 +255,14 @@ npm run prepublishOnly
 
 The project uses Vitest with comprehensive test coverage:
 
-- **227 unit tests** across 6 test files
-- **98%+ average coverage** for implemented components
+- **363 tests** across 9 test files
+- **99.36% code coverage** overall
 - **Test patterns**: AAA (Arrange-Act-Assert), mocked dependencies, comprehensive edge cases
-- **Coverage targets**: 80%+ overall, 90%+ for new implementations
+
+| Test Suite | Tests | Coverage |
+|------------|-------|----------|
+| Unit Tests | 305 | 98%+ |
+| Integration Tests | 58 | 99%+ |
 
 ```bash
 npm run test:coverage  # Generate detailed coverage report
