@@ -255,14 +255,13 @@ npm run prepublishOnly
 
 The project uses Vitest with comprehensive test coverage:
 
-- **363 tests** across 9 test files
-- **99.36% code coverage** overall
+- **363 tests** with **99.36% code coverage**
 - **Test patterns**: AAA (Arrange-Act-Assert), mocked dependencies, comprehensive edge cases
 
-| Test Suite | Tests | Coverage |
-|------------|-------|----------|
-| Unit Tests | 305 | 98%+ |
-| Integration Tests | 58 | 99%+ |
+| Test Suite | Tests |
+|------------|-------|
+| Unit Tests | 305 |
+| Integration Tests | 58 |
 
 ```bash
 npm run test:coverage  # Generate detailed coverage report
