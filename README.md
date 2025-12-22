@@ -268,6 +268,53 @@ The project uses Vitest with comprehensive test coverage:
 npm run test:coverage  # Generate detailed coverage report
 ```
 
+## Migrating from convert-hashnode.js
+
+If you're migrating from the original `convert-hashnode.js` script, here are the key differences:
+
+### Configuration Changes
+
+| Original Script | This Package |
+|-----------------|--------------|
+| Environment variables (`EXPORT_DIR`, `READ_DIR`) | CLI arguments (`--export`, `--output`) |
+| Hardcoded paths | User-specified paths |
+| Single output format | Same output format, more control |
+
+### Migration Steps
+
+1. **Install the package**:
+   ```bash
+   npm install @alvin/hashnode-content-converter
+   ```
+
+2. **Replace script invocation**:
+   ```bash
+   # Old way (convert-hashnode.js)
+   EXPORT_DIR=blog READ_DIR=blog node convert-hashnode.js
+
+   # New way
+   npx @alvin/hashnode-content-converter convert \
+     --export ./hashnode/export-articles.json \
+     --output ./blog
+   ```
+
+3. **Output format**: The generated Markdown files maintain the same structure:
+   - YAML frontmatter with title, date, description, cover image
+   - Cleaned markdown content (align attributes removed)
+   - Downloaded images in post directories
+
+### Programmatic Migration
+
+If you were importing functions from the script, use the new typed API:
+
+```typescript
+// Old (untyped)
+const { processPost, downloadImage } = require('./convert-hashnode');
+
+// New (typed)
+import { Converter, PostParser, ImageProcessor } from '@alvin/hashnode-content-converter';
+```
+
 ## Documentation
 
 - [TRANSITION.md](TRANSITION.md) - Comprehensive architecture and implementation roadmap
