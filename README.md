@@ -317,10 +317,9 @@ import { Converter, PostParser, ImageProcessor } from '@alvin/hashnode-content-c
 
 ## Documentation
 
-- [TRANSITION.md](TRANSITION.md) - Comprehensive architecture and implementation roadmap
-- [CLAUDE.md](CLAUDE.md) - Project guidelines for Claude Code
-- [docs/PHASE_*.md](docs/) - Phase-by-phase implementation tracking
-- [docs/CONVENTIONS.md](docs/CONVENTIONS.md) - Code style conventions
+- [docs/TRANSITION.md](docs/TRANSITION.md) - Architecture and implementation history
+- [CLAUDE.md](CLAUDE.md) - Project guidelines for development
+- [docs/phases/](docs/phases/) - Phase-by-phase implementation plans
 
 ## Contributing
 
