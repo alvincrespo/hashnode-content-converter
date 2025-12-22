@@ -305,13 +305,15 @@ If you're migrating from the original `convert-hashnode.js` script, here are the
 
 ### Programmatic Migration
 
-If you were importing functions from the script, use the new typed API:
+If you were importing functions from the original JavaScript script, you can now use the new typed API:
+
+```javascript
+// Old: CommonJS JavaScript (no type information)
+const { processPost, downloadImage } = require('./convert-hashnode');
+```
 
 ```typescript
-// Old (untyped)
-const { processPost, downloadImage } = require('./convert-hashnode');
-
-// New (typed)
+// New: TypeScript with full type support
 import { Converter, PostParser, ImageProcessor } from '@alvin/hashnode-content-converter';
 ```
 
