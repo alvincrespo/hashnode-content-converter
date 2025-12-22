@@ -28,16 +28,45 @@ npm install @alvin/hashnode-content-converter
 
 ## Usage
 
-### CLI (Coming Soon)
+### CLI
 
-Once implementation is complete, the CLI will provide a simple interface:
+The CLI provides a simple interface for converting Hashnode exports:
 
 ```bash
+# Basic usage
+npx @alvin/hashnode-content-converter convert \
+  --export ./hashnode/export-articles.json \
+  --output ./blog
+
+# With all options
 npx @alvin/hashnode-content-converter convert \
   --export ./hashnode/export-articles.json \
   --output ./blog \
-  --log-file ./conversion.log
+  --log-file ./conversion.log \
+  --verbose
+
+# Overwrite existing posts (default is to skip)
+npx @alvin/hashnode-content-converter convert \
+  --export ./export.json \
+  --output ./blog \
+  --no-skip-existing
 ```
+
+**Options**:
+
+| Option | Short | Description | Default |
+|--------|-------|-------------|---------|
+| `--export <path>` | `-e` | Path to Hashnode export JSON file | Required |
+| `--output <path>` | `-o` | Output directory for converted posts | Required |
+| `--log-file <path>` | `-l` | Path to log file | Optional |
+| `--skip-existing` | | Skip posts that already exist | `true` |
+| `--no-skip-existing` | | Overwrite existing posts | |
+| `--verbose` | `-v` | Show detailed output including image downloads | `false` |
+| `--quiet` | `-q` | Suppress all output except errors | `false` |
+
+**Exit Codes**:
+- `0` - Conversion completed successfully
+- `1` - Conversion completed with errors, or validation failed
 
 ### Programmatic API
 
