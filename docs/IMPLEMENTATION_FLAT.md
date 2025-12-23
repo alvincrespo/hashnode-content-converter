@@ -806,6 +806,10 @@ async convertPost(
     }
 
     // Step 4: Process images
+    // Note: Creating a new ImageProcessor with custom downloadOptions is safe because
+    // download state is persisted via .downloaded-markers/ files on disk, not in-memory.
+    // A new instance will read existing markers and skip already-downloaded images.
+    // Custom options only affect retry behavior for new/failed downloads.
     const imageProcessor = options?.downloadOptions
       ? new ImageProcessor(options.downloadOptions)
       : this.imageProcessor;
