@@ -207,6 +207,7 @@ src/
 | Marker location | `{imageDir}/.downloaded-markers/` (per-post) | `{imageDir}/.downloaded-markers/` (shared) |
 
 > **Note on markers**: Both modes use `{imageDir}/.downloaded-markers/` for download state. In nested mode, each post has its own markers directory. In flat mode, all posts share a single markers directory, enabling cross-post image deduplication.
+| Marker location | `{slug}/.downloaded-markers/` | `_images/.downloaded-markers/` |
 
 ---
 
@@ -1017,8 +1018,8 @@ const imageProcessor = options?.downloadOptions
 
 #### Step 5.1: Update CLIOptions Interface
 - [ ] Add `flat` boolean flag
-- [ ] Add `imageFolder` optional string
-- [ ] Add `imagePrefix` optional string
+- [ ] Add `imageFolderName` optional string (renamed from `imageFolder`)
+- [ ] Add `imagePathPrefix` optional string (renamed from `imagePrefix`)
 
 **Proposed Changes to `src/cli/convert.ts`:**
 
@@ -1066,7 +1067,6 @@ program
 #### Step 5.3: Build outputStructure from CLI Options
 - [ ] Create `OutputStructure` object when `--flat` is set
 - [ ] Pass through to `ConversionOptions`
-- [ ] Warn if `--image-folder` or `--image-prefix` are used without `--flat`
 
 **Proposed Changes to `runConvert` function (around lines 268-279):**
 
@@ -1075,16 +1075,6 @@ program
 const conversionOptions: ConversionOptions = {
   skipExisting: options.skipExisting,
 };
-
-// Warn if flat-mode-only options are used without --flat
-if (!options.flat) {
-  if (options.imageFolder) {
-    console.warn('Warning: --image-folder is ignored without --flat');
-  }
-  if (options.imagePrefix) {
-    console.warn('Warning: --image-prefix is ignored without --flat');
-  }
-}
 
 // Add output structure config if flat mode is enabled
 if (options.flat) {
@@ -1136,7 +1126,7 @@ if (!options.quiet) {
 - [ ] Test `--flat` defaults to `false`
 - [ ] Test `--image-folder` option passed through
 - [ ] Test `--image-prefix` option passed through
-- [ ] Test validation: `--image-folder` without `--flat` (should warn and continue)
+- [ ] Test validation: `--image-folder` without `--flat` (should warn or be ignored)
 
 **Test Cases for `tests/unit/cli/cli.test.ts`:**
 
@@ -1175,41 +1165,6 @@ describe('--image-prefix option', () => {
       '--flat', '--image-prefix', '/static/images'
     ]);
     expect(options.imagePrefix).toBe('/static/images');
-  });
-});
-
-describe('flat mode options without --flat', () => {
-  it('should warn when --image-folder is used without --flat', async () => {
-    const consoleSpy = vi.spyOn(console, 'warn');
-    await runConvert({
-      export: 'export.json',
-      output: 'out',
-      flat: false,
-      imageFolder: 'assets',  // Provided without --flat
-      // ...other required options
-    });
-    expect(consoleSpy).toHaveBeenCalledWith(
-      expect.stringContaining('--image-folder is ignored without --flat')
-    );
-  });
-
-  it('should warn when --image-prefix is used without --flat', async () => {
-    const consoleSpy = vi.spyOn(console, 'warn');
-    await runConvert({
-      export: 'export.json',
-      output: 'out',
-      flat: false,
-      imagePrefix: '/assets',  // Provided without --flat
-      // ...other required options
-    });
-    expect(consoleSpy).toHaveBeenCalledWith(
-      expect.stringContaining('--image-prefix is ignored without --flat')
-    );
-  });
-
-  it('should not build outputStructure when flat is false', async () => {
-    // Even if imageFolder/imagePrefix are provided, they should be ignored
-    // and outputStructure should not be set
   });
 });
 ```
