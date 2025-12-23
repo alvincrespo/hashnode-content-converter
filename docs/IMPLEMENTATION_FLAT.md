@@ -1136,7 +1136,7 @@ if (!options.quiet) {
 - [ ] Test `--flat` defaults to `false`
 - [ ] Test `--image-folder` option passed through
 - [ ] Test `--image-prefix` option passed through
-- [ ] Test validation: `--image-folder` without `--flat` (should warn or be ignored)
+- [ ] Test validation: `--image-folder` without `--flat` (should warn and continue)
 
 **Test Cases for `tests/unit/cli/cli.test.ts`:**
 
