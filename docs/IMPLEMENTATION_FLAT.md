@@ -478,10 +478,11 @@ describe('Flat Output Mode', () => {
       // Assert postExists returns false for non-existent file
     });
 
-    it('should ignore {slug}/ directory in flat mode', () => {
+    it('should check for {slug}.md file, not {slug}/ directory in flat mode', () => {
       const flatWriter = new FileWriter({ outputMode: 'flat' });
-      // Create test-slug/ directory (but no .md file)
-      // Assert postExists returns false
+      // Create test-slug/ directory (simulating previous nested mode run)
+      // Assert postExists('test-slug') returns false
+      // because flat mode looks for test-slug.md, not test-slug/
     });
   });
 
