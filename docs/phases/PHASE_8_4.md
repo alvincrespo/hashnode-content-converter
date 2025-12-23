@@ -115,7 +115,7 @@ jobs:
   release:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       id-token: write
     steps:
       - uses: actions/checkout@v4
@@ -139,7 +139,18 @@ jobs:
         run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'rc') }}
 ```
+
+**Key features**:
+- `generate_release_notes: true` - Auto-generates release notes from PRs/commits since last release
+- `prerelease` detection - Tags with "alpha", "beta", or "rc" are marked as pre-releases
+- `contents: write` permission - Required to create GitHub releases
 
 ---
 
@@ -235,7 +246,10 @@ ls -la *.tgz
 - [ ] .npmignore excludes src/, tests/, docs/, .github/, .claude/
 - [ ] `npm pack --dry-run` shows only essential files
 - [ ] Package size reduced from ~915KB to ~50-100KB
-- [ ] GitHub Actions release workflow created
+- [ ] GitHub Actions release workflow created with:
+  - [ ] npm publish step
+  - [ ] GitHub Release with auto-generated release notes
+  - [ ] Pre-release detection for alpha/beta/rc tags
 - [ ] README.md has "Releasing" section with automated and manual instructions
 - [ ] TRANSITION.md Step 8.4 marked complete
 
@@ -284,6 +298,8 @@ npm pack && ls -la *.tgz && rm *.tgz
 - Adding standard npm metadata (repository, homepage, bugs)
 - Creating .npmignore to reduce package size by ~90%
 - Setting up GitHub Actions for automated releases on tag push
+- Auto-generating GitHub Release notes from PRs/commits
+- Pre-release detection for alpha/beta/rc tags
 - Documenting release process in README (automated + manual options)
 
 No actual publishing occurs - that's a manual step after merge.
