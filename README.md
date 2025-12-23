@@ -284,9 +284,11 @@ This package uses GitHub Actions for automated npm publishing.
    ```
 
 3. The GitHub Action will automatically:
+   - Run lint and type-check
    - Run tests
    - Build the package
    - Publish to npm
+   - Create a GitHub Release with auto-generated notes
 
 ### Manual Release
 
