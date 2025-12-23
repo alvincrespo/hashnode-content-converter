@@ -972,6 +972,42 @@ describe('Flat Output Mode', () => {
 });
 ```
 
+#### Step 4.4: Document ImageProcessor Instance Independence
+- [ ] Enhance `ImageProcessor` class JSDoc to explain instance independence
+- [ ] Add comment in `Converter.convertPost()` at the `downloadOptions` check
+
+**Why this matters:** The marker-based download state is persisted on disk, not in-memory. This means multiple `ImageProcessor` instances safely share state, but this isn't obvious when reading the code.
+
+**Proposed Changes to `src/processors/image-processor.ts`:**
+
+Add to class-level JSDoc:
+
+```typescript
+/**
+ * Instance Independence:
+ * Because download state is persisted to disk via marker files (not in-memory),
+ * multiple ImageProcessor instances safely share state. Creating a new instance
+ * with different options won't cause re-downloading of already-downloaded images.
+ * This design enables:
+ * - Safe per-conversion custom options (different retry settings)
+ * - Resumable downloads across process restarts
+ * - Parallel processing without state conflicts
+ */
+```
+
+**Proposed Changes to `src/converter.ts`:**
+
+Add comment at `downloadOptions` check:
+
+```typescript
+// Note: Creating a new ImageProcessor with custom downloadOptions is safe because
+// download state is persisted via .downloaded-markers/ files on disk, not in-memory.
+// A new instance will read existing markers and skip already-downloaded images.
+const imageProcessor = options?.downloadOptions
+  ? new ImageProcessor(options.downloadOptions)
+  : this.imageProcessor;
+```
+
 ---
 
 ### Phase 5: CLI Updates
