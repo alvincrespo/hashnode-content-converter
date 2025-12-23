@@ -974,8 +974,8 @@ describe('Flat Output Mode', () => {
 
 #### Step 5.1: Update CLIOptions Interface
 - [ ] Add `flat` boolean flag
-- [ ] Add `imageFolderName` optional string (renamed from `imageFolder`)
-- [ ] Add `imagePathPrefix` optional string (renamed from `imagePrefix`)
+- [ ] Add `imageFolder` optional string
+- [ ] Add `imagePrefix` optional string
 
 **Proposed Changes to `src/cli/convert.ts`:**
 
