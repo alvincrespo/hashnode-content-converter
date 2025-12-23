@@ -14,7 +14,7 @@ Additionally, this script serves a valuable purpose (migrating content from Hash
 
 ## Goal
 
-Extract the conversion logic into a modular, well-typed TypeScript npm package (`@alvin/hashnode-content-converter`) that:
+Extract the conversion logic into a modular, well-typed TypeScript npm package (`@alvincrespo/hashnode-content-converter`) that:
 - **Can be used as a CLI tool** - drop-in replacement for current script with backwards compatibility
 - **Can be consumed as a library** - reusable processor for content migration in other projects
 - **Is well-structured** - single responsibility principle, composition over inheritance
@@ -28,7 +28,7 @@ Extract the conversion logic into a modular, well-typed TypeScript npm package (
 ### Package Structure
 
 ```
-@alvin/hashnode-content-converter/
+@alvincrespo/hashnode-content-converter/
 ├── src/
 │   ├── types/
 │   │   ├── hashnode-schema.ts          # Hashnode export JSON types
@@ -151,7 +151,7 @@ Extract the conversion logic into a modular, well-typed TypeScript npm package (
    Command-line entry point that mirrors current script functionality.
 
    ```bash
-   npx @alvin/hashnode-content-converter convert \
+   npx @alvincrespo/hashnode-content-converter convert \
      --export ./hashnode/export-articles.json \
      --output ./blog \
      --log-file ./conversion.log
@@ -205,7 +205,7 @@ Extract the conversion logic into a modular, well-typed TypeScript npm package (
 #### Step 1.1: Create NPM Package Scaffold ✅
 - ✅ Initialize new project directory: `hashnode-content-converter`
 - ✅ Create `package.json` with:
-  - ✅ name: `@alvin/hashnode-content-converter`
+  - ✅ name: `@alvincrespo/hashnode-content-converter`
   - ✅ main entry point: `dist/index.js`
   - ✅ types entry point: `dist/index.d.ts`
   - ✅ bin entry point for CLI: `dist/cli/convert.js`
@@ -491,20 +491,21 @@ Testing was implemented alongside features throughout the project. All steps wer
 - ✅ Technical details section (TypeScript, Node.js, Vitest, ESLint, CI/CD)
 - ✅ Pull Request #41, Issue #17
 
-#### Step 8.3: Create Migration Guide
-- Document how to migrate existing blog repo
-- Provide setup script
-- Document differences from original script
-- Document any breaking changes
+#### Step 8.3: Create Migration Guide ✅ COMPLETE (2025-12-22)
+- ✅ Document how to migrate existing blog repo (covered in README.md)
+- ✅ Document differences from original script (Configuration Changes table in README.md)
+- ✅ Document any breaking changes (API differences documented in README.md)
+- Note: Separate setup script deemed unnecessary - `npm install` is sufficient
 
-#### Step 8.4: Prepare npm Publication
-- Update package.json metadata
-- Add repository field
-- Add keywords (hashnode, content, migration, blog)
-- Create .npmignore file
-- Add license file
-- Setup npm access tokens
-- Publish to registry
+#### Step 8.4: Prepare npm Publication ✅ COMPLETE (2025-12-22)
+- ✅ Update package.json metadata (repository, homepage, bugs fields)
+- ✅ Add repository field
+- ✅ Keywords already present (7 keywords)
+- ✅ Create .npmignore file (reduced package from 45MB to 49KB)
+- ✅ LICENSE file already exists (MIT)
+- ✅ GitHub Actions release workflow (.github/workflows/release.yml)
+- ✅ Releasing documentation added to README.md
+- Note: Actual npm publish is manual step after merge (requires NPM_TOKEN secret)
 
 ### Phase 9: Integration with Current Blog
 
@@ -512,7 +513,7 @@ Testing was implemented alongside features throughout the project. All steps wer
 - Script to:
   1. Create new project directory
   2. Initialize npm package
-  3. Add @alvin/hashnode-content-converter as dependency
+  3. Add @alvincrespo/hashnode-content-converter as dependency
   4. Copy sample .env or config file
   5. Create usage script
 - Make script executable and documented

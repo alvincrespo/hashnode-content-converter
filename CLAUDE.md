@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**@alvin/hashnode-content-converter** is a TypeScript npm package that converts Hashnode blog exports into framework-agnostic Markdown with YAML frontmatter. It was refactored from a monolithic Node.js script (`convert-hashnode.js`) into a modular, type-safe, reusable package.
+**@alvincrespo/hashnode-content-converter** is a TypeScript npm package that converts Hashnode blog exports into framework-agnostic Markdown with YAML frontmatter. It was refactored from a monolithic Node.js script (`convert-hashnode.js`) into a modular, type-safe, reusable package.
 
 **Current Status**: Feature-complete and production-ready. All core processors, services, and CLI are fully implemented with 99.36% test coverage (363 tests). See TRANSITION.md for the implementation history.
 
@@ -230,9 +230,9 @@ The CLI is defined in [src/cli/convert.ts](src/cli/convert.ts) and registered in
 
 **Usage:**
 ```bash
-npx @alvin/hashnode-content-converter convert --export ./export.json --output ./blog
-npx @alvin/hashnode-content-converter convert --export ./export.json --output ./blog --verbose
-npx @alvin/hashnode-content-converter convert --export ./export.json --output ./blog --no-skip-existing
+npx @alvincrespo/hashnode-content-converter convert --export ./export.json --output ./blog
+npx @alvincrespo/hashnode-content-converter convert --export ./export.json --output ./blog --verbose
+npx @alvincrespo/hashnode-content-converter convert --export ./export.json --output ./blog --no-skip-existing
 ```
 
 ## Package Configuration

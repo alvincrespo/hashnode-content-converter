@@ -2,14 +2,14 @@
 
 **Document Version**: 1.0
 **Created**: 2025-01-06
-**Project**: @alvin/hashnode-content-converter
+**Project**: @alvincrespo/hashnode-content-converter
 **Status**: Draft - Awaiting Review
 
 ---
 
 ## Executive Summary
 
-This document outlines a comprehensive migration plan to align the `@alvin/hashnode-content-converter` package with 2025 TypeScript best practices and modern Node.js standards. The codebase is already following many current conventions (kebab-case naming, Vitest testing, strict TypeScript), but there are strategic opportunities to improve developer experience, future-proof the package, and align with ecosystem standards.
+This document outlines a comprehensive migration plan to align the `@alvincrespo/hashnode-content-converter` package with 2025 TypeScript best practices and modern Node.js standards. The codebase is already following many current conventions (kebab-case naming, Vitest testing, strict TypeScript), but there are strategic opportunities to improve developer experience, future-proof the package, and align with ecosystem standards.
 
 ### Goals
 - **Improve Developer Experience**: Better IDE support, clearer imports, enhanced type safety
@@ -83,7 +83,7 @@ Critical improvements with significant DX impact and future-proofing benefits.
 ```
 
 #### Why This Matters
-- **Prevents Deep Imports**: Users can only import from public API (`@alvin/hashnode-content-converter`), not internal paths
+- **Prevents Deep Imports**: Users can only import from public API (`@alvincrespo/hashnode-content-converter`), not internal paths
 - **Future ESM Support**: Prepares for dual-format publishing (Phase 2)
 - **Better IDE Support**: Modern IDEs use `exports` for auto-import suggestions
 - **Node.js Recommendation**: Official Node.js best practice since v12.7.0
@@ -104,7 +104,7 @@ Critical improvements with significant DX impact and future-proofing benefits.
    node -e "const pkg = require('./dist/index.js'); console.log(pkg)"
 
    # Test that deep imports are blocked
-   node -e "try { require('@alvin/hashnode-content-converter/dist/services/logger'); } catch(e) { console.log('✓ Deep imports blocked'); }"
+   node -e "try { require('@alvincrespo/hashnode-content-converter/dist/services/logger'); } catch(e) { console.log('✓ Deep imports blocked'); }"
    ```
 
 3. **Update documentation**
@@ -997,13 +997,13 @@ Comprehensive JSDoc on all public APIs for better IDE IntelliSense and auto-gene
    ```typescript
    /**
     * @packageDocumentation
-    * @module @alvin/hashnode-content-converter
+    * @module @alvincrespo/hashnode-content-converter
     *
     * Converts Hashnode blog exports to framework-agnostic Markdown with YAML frontmatter.
     *
     * @example
     * ```typescript
-    * import { Converter } from '@alvin/hashnode-content-converter';
+    * import { Converter } from '@alvincrespo/hashnode-content-converter';
     *
     * const converter = new Converter();
     * const result = await converter.convertAllPosts('./export.json', './output');
@@ -1277,7 +1277,7 @@ Comprehensive JSDoc on all public APIs for better IDE IntelliSense and auto-gene
 Create a test file to verify IDE experience:
 ```typescript
 // test-jsdoc.ts
-import { Converter, ConversionOptions } from '@alvin/hashnode-content-converter';
+import { Converter, ConversionOptions } from '@alvincrespo/hashnode-content-converter';
 
 const options: ConversionOptions = {
   // Hover over properties - should see descriptions

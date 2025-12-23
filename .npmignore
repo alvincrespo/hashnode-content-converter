@@ -1,0 +1,43 @@
+# Source files (dist/ is published)
+src/
+
+# Tests
+tests/
+vitest.config.ts
+*.test.ts
+
+# Development configs
+tsconfig.json
+tsconfig.build.json
+.eslintrc*
+eslint.config.*
+
+# CI/CD and tooling
+.github/
+.claude/
+.node-version
+
+# Documentation (keep README, LICENSE, CHANGELOG)
+docs/
+
+# Original script (historical reference, not needed in package)
+convert-hashnode.js
+
+# Editor/IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Coverage
+coverage/
+
+# Misc
+CLAUDE.md
+scripts/
+
+# User data (blog content, exports)
+blog/
+hashnode/
+*.log
+.env
