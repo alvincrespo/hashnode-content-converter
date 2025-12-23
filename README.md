@@ -267,6 +267,49 @@ The project uses Vitest with comprehensive test coverage:
 npm run test:coverage  # Generate detailed coverage report
 ```
 
+## Releasing
+
+This package uses GitHub Actions for automated npm publishing.
+
+### Automated Release (Recommended)
+
+1. **Update version** in `package.json`:
+   ```bash
+   npm version patch  # or minor, major
+   ```
+
+2. **Push the tag** to trigger the release workflow:
+   ```bash
+   git push origin main --tags
+   ```
+
+3. The GitHub Action will automatically:
+   - Run tests
+   - Build the package
+   - Publish to npm
+
+### Manual Release
+
+For manual publishing:
+
+```bash
+# Build and test
+npm run prepublishOnly
+
+# Login to npm (first time only)
+npm login
+
+# Publish
+npm publish --access public
+```
+
+### Pre-release Checklist
+
+- [ ] All tests passing (`npm test`)
+- [ ] CHANGELOG.md updated with new version
+- [ ] Version bumped in package.json
+- [ ] No uncommitted changes
+
 ## Migrating from convert-hashnode.js
 
 If you're migrating from the original `convert-hashnode.js` script, here are the key differences:
