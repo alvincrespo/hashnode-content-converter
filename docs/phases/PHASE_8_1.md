@@ -102,7 +102,7 @@ From [GitHub Issue #16](https://github.com/alvincrespo/hashnode-content-converte
 Once implementation is complete, the CLI will provide a simple interface:
 
 ```bash
-npx @alvin/hashnode-content-converter convert \
+npx @alvincrespo/hashnode-content-converter convert \
   --export ./hashnode/export-articles.json \
   --output ./blog \
   --log-file ./conversion.log
@@ -117,19 +117,19 @@ The CLI provides a simple interface for converting Hashnode exports:
 
 ```bash
 # Basic usage
-npx @alvin/hashnode-content-converter convert \
+npx @alvincrespo/hashnode-content-converter convert \
   --export ./hashnode/export-articles.json \
   --output ./blog
 
 # With all options
-npx @alvin/hashnode-content-converter convert \
+npx @alvincrespo/hashnode-content-converter convert \
   --export ./hashnode/export-articles.json \
   --output ./blog \
   --log-file ./conversion.log \
   --verbose
 
 # Overwrite existing posts (default is to skip)
-npx @alvin/hashnode-content-converter convert \
+npx @alvincrespo/hashnode-content-converter convert \
   --export ./export.json \
   --output ./blog \
   --no-skip-existing
@@ -277,7 +277,7 @@ If you're migrating from the original `convert-hashnode.js` script, here are the
 
 1. **Install the package**:
    ```bash
-   npm install @alvin/hashnode-content-converter
+   npm install @alvincrespo/hashnode-content-converter
    ```
 
 2. **Replace script invocation**:
@@ -286,7 +286,7 @@ If you're migrating from the original `convert-hashnode.js` script, here are the
    EXPORT_DIR=blog READ_DIR=blog node convert-hashnode.js
 
    # New way
-   npx @alvin/hashnode-content-converter convert \
+   npx @alvincrespo/hashnode-content-converter convert \
      --export ./hashnode/export-articles.json \
      --output ./blog
    ```
@@ -305,7 +305,7 @@ If you were importing functions from the script, use the new typed API:
 const { processPost, downloadImage } = require('./convert-hashnode');
 
 // New (typed)
-import { Converter, PostParser, ImageProcessor } from '@alvin/hashnode-content-converter';
+import { Converter, PostParser, ImageProcessor } from '@alvincrespo/hashnode-content-converter';
 ```
 ```
 

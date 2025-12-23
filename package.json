@@ -1,5 +1,5 @@
 {
-  "name": "@alvin/hashnode-content-converter",
+  "name": "@alvincrespo/hashnode-content-converter",
   "version": "0.1.0",
   "description": "Convert Hashnode blog exports to framework-agnostic Markdown with YAML frontmatter",
   "main": "dist/index.js",

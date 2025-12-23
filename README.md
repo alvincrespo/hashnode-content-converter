@@ -1,4 +1,4 @@
-# @alvin/hashnode-content-converter
+# @alvincrespo/hashnode-content-converter
 
 [![codecov](https://codecov.io/gh/alvincrespo/hashnode-content-converter/graph/badge.svg)](https://codecov.io/gh/alvincrespo/hashnode-content-converter)
 [![Tests](https://github.com/alvincrespo/hashnode-content-converter/actions/workflows/ci.yml/badge.svg)](https://github.com/alvincrespo/hashnode-content-converter/actions/workflows/ci.yml)
@@ -21,7 +21,7 @@ Convert Hashnode blog exports to framework-agnostic Markdown with YAML frontmatt
 ## Installation
 
 ```bash
-npm install @alvin/hashnode-content-converter
+npm install @alvincrespo/hashnode-content-converter
 ```
 
 **Requirements**: Node.js >= 18.0.0 (Unix-like systems only: macOS, Linux)
@@ -34,19 +34,19 @@ The CLI provides a simple interface for converting Hashnode exports:
 
 ```bash
 # Basic usage
-npx @alvin/hashnode-content-converter convert \
+npx @alvincrespo/hashnode-content-converter convert \
   --export ./hashnode/export-articles.json \
   --output ./blog
 
 # With all options
-npx @alvin/hashnode-content-converter convert \
+npx @alvincrespo/hashnode-content-converter convert \
   --export ./hashnode/export-articles.json \
   --output ./blog \
   --log-file ./conversion.log \
   --verbose
 
 # Overwrite existing posts (default is to skip)
-npx @alvin/hashnode-content-converter convert \
+npx @alvincrespo/hashnode-content-converter convert \
   --export ./export.json \
   --output ./blog \
   --no-skip-existing
@@ -75,7 +75,7 @@ npx @alvin/hashnode-content-converter convert \
 The simplest way to convert a Hashnode export:
 
 ```typescript
-import { Converter } from '@alvin/hashnode-content-converter';
+import { Converter } from '@alvincrespo/hashnode-content-converter';
 
 // One-liner conversion
 const result = await Converter.fromExportFile('./export.json', './blog');
@@ -87,7 +87,7 @@ console.log(`Converted ${result.converted} posts in ${result.duration}`);
 Track conversion progress with a simple callback:
 
 ```typescript
-import { Converter } from '@alvin/hashnode-content-converter';
+import { Converter } from '@alvincrespo/hashnode-content-converter';
 
 const converter = Converter.withProgress((current, total, title) => {
   console.log(`[${current}/${total}] Converting: ${title}`);
@@ -101,7 +101,7 @@ const result = await converter.convertAllPosts('./export.json', './blog');
 For complete control, use the event-driven API:
 
 ```typescript
-import { Converter } from '@alvin/hashnode-content-converter';
+import { Converter } from '@alvincrespo/hashnode-content-converter';
 
 const converter = new Converter();
 
@@ -141,7 +141,7 @@ import {
   ImageProcessor,
   FrontmatterGenerator,
   FileWriter
-} from '@alvin/hashnode-content-converter';
+} from '@alvincrespo/hashnode-content-converter';
 
 // Parse metadata
 const parser = new PostParser();
@@ -328,7 +328,7 @@ If you're migrating from the original `convert-hashnode.js` script, here are the
 
 1. **Install the package**:
    ```bash
-   npm install @alvin/hashnode-content-converter
+   npm install @alvincrespo/hashnode-content-converter
    ```
 
 2. **Replace script invocation**:
@@ -337,7 +337,7 @@ If you're migrating from the original `convert-hashnode.js` script, here are the
    EXPORT_DIR=blog READ_DIR=blog node convert-hashnode.js
 
    # New way
-   npx @alvin/hashnode-content-converter convert \
+   npx @alvincrespo/hashnode-content-converter convert \
      --export ./hashnode/export-articles.json \
      --output ./blog
    ```
@@ -358,7 +358,7 @@ const { processPost, downloadImage } = require('./convert-hashnode');
 
 ```typescript
 // New: TypeScript with full type support
-import { Converter, PostParser, ImageProcessor } from '@alvin/hashnode-content-converter';
+import { Converter, PostParser, ImageProcessor } from '@alvincrespo/hashnode-content-converter';
 ```
 
 ## Documentation

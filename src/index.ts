@@ -1,13 +1,13 @@
 /**
  * @packageDocumentation
  *
- * # @alvin/hashnode-content-converter
+ * # @alvincrespo/hashnode-content-converter
  *
  * Convert Hashnode blog exports to Markdown with YAML frontmatter.
  *
  * ## Quick Start
  * ```typescript
- * import { Converter } from '@alvin/hashnode-content-converter';
+ * import { Converter } from '@alvincrespo/hashnode-content-converter';
  *
  * // One-liner for simple conversions
  * const result = await Converter.fromExportFile('./export.json', './blog');

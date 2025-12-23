@@ -22,7 +22,7 @@ Phase 1 establishes the project foundation with all necessary scaffolding, confi
 All requirements met:
 - ✅ Project directory initialized
 - ✅ `package.json` configured with:
-  - ✅ Name: `@alvin/hashnode-content-converter`
+  - ✅ Name: `@alvincrespo/hashnode-content-converter`
   - ✅ Main entry point: `dist/index.js`
   - ✅ Types entry point: `dist/index.d.ts`
   - ✅ CLI binary entry: `dist/cli/convert.js`

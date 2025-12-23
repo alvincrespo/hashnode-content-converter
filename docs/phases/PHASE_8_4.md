@@ -9,7 +9,7 @@
 
 ## Overview
 
-Prepare the `@alvin/hashnode-content-converter` package for npm publication by adding missing metadata fields, creating an `.npmignore` file to reduce package size, and setting up GitHub Actions for automated releases.
+Prepare the `@alvincrespo/hashnode-content-converter` package for npm publication by adding missing metadata fields, creating an `.npmignore` file to reduce package size, and setting up GitHub Actions for automated releases.
 
 **Scope**:
 - IN SCOPE: package.json metadata, .npmignore, GitHub Actions release workflow, README release docs

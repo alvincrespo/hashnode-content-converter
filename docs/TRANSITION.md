@@ -14,7 +14,7 @@ Additionally, this script serves a valuable purpose (migrating content from Hash
 
 ## Goal
 
-Extract the conversion logic into a modular, well-typed TypeScript npm package (`@alvin/hashnode-content-converter`) that:
+Extract the conversion logic into a modular, well-typed TypeScript npm package (`@alvincrespo/hashnode-content-converter`) that:
 - **Can be used as a CLI tool** - drop-in replacement for current script with backwards compatibility
 - **Can be consumed as a library** - reusable processor for content migration in other projects
 - **Is well-structured** - single responsibility principle, composition over inheritance
@@ -28,7 +28,7 @@ Extract the conversion logic into a modular, well-typed TypeScript npm package (
 ### Package Structure
 
 ```
-@alvin/hashnode-content-converter/
+@alvincrespo/hashnode-content-converter/
 ├── src/
 │   ├── types/
 │   │   ├── hashnode-schema.ts          # Hashnode export JSON types
@@ -151,7 +151,7 @@ Extract the conversion logic into a modular, well-typed TypeScript npm package (
    Command-line entry point that mirrors current script functionality.
 
    ```bash
-   npx @alvin/hashnode-content-converter convert \
+   npx @alvincrespo/hashnode-content-converter convert \
      --export ./hashnode/export-articles.json \
      --output ./blog \
      --log-file ./conversion.log
@@ -205,7 +205,7 @@ Extract the conversion logic into a modular, well-typed TypeScript npm package (
 #### Step 1.1: Create NPM Package Scaffold ✅
 - ✅ Initialize new project directory: `hashnode-content-converter`
 - ✅ Create `package.json` with:
-  - ✅ name: `@alvin/hashnode-content-converter`
+  - ✅ name: `@alvincrespo/hashnode-content-converter`
   - ✅ main entry point: `dist/index.js`
   - ✅ types entry point: `dist/index.d.ts`
   - ✅ bin entry point for CLI: `dist/cli/convert.js`
@@ -513,7 +513,7 @@ Testing was implemented alongside features throughout the project. All steps wer
 - Script to:
   1. Create new project directory
   2. Initialize npm package
-  3. Add @alvin/hashnode-content-converter as dependency
+  3. Add @alvincrespo/hashnode-content-converter as dependency
   4. Copy sample .env or config file
   5. Create usage script
 - Make script executable and documented
