@@ -1267,6 +1267,10 @@ export type { ImageProcessorContext } from './types/image-processor';
 
 1. **Image deduplication**: Multiple posts may reference the same image. The marker system handles this - if an image exists with a success marker, it's skipped and the URL replaced.
 
+   **Sequential processing note**: The current implementation processes posts sequentially via `for...of` loop in `convertAllPosts()`, so there is no race condition when multiple posts reference the same image. The marker check and file write happen atomically for each image before the next post begins processing.
+
+   **Future consideration**: If parallel post processing is added (e.g., `Promise.all` for concurrent conversion), duplicate downloads could occur when two posts reference the same image simultaneously. This would be inefficient but safe - the last write wins, and both posts would get valid image paths. To prevent this, a shared download coordinator or pre-processing step to deduplicate images across posts would be needed.
+
 2. **Parent directory validation**: In flat mode, `path.dirname(outputDir)` must exist. Add validation to ensure parent exists before creating `_images` sibling.
 
 3. **Image filename collisions**: Different Hashnode CDN URLs might produce the same filename hash. The current `ImageDownloader.extractHash()` uses UUID from the URL, which should be unique.
