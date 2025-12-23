@@ -207,7 +207,6 @@ src/
 | Marker location | `{imageDir}/.downloaded-markers/` (per-post) | `{imageDir}/.downloaded-markers/` (shared) |
 
 > **Note on markers**: Both modes use `{imageDir}/.downloaded-markers/` for download state. In nested mode, each post has its own markers directory. In flat mode, all posts share a single markers directory, enabling cross-post image deduplication.
-| Marker location | `{slug}/.downloaded-markers/` | `_images/.downloaded-markers/` |
 
 ---
 
