@@ -1,10 +1,12 @@
 ---
-allowed-tools: mcp__github__list_issues, mcp__github__issue_read, Bash(nvm:*), Bash(npm run:*)
+allowed-tools: Read, Write, Glob, Grep, EnterPlanMode, ExitPlanMode, mcp__github__list_issues, mcp__github__issue_read, Bash(nvm:*), Bash(npm run:*), Bash(mkdir:*)
 ---
 
 # Plan Implementation
 
 Plan a detailed implementation phase for the codebase based on a planning document or GitHub issue.
+
+**This command creates a plan document - it does NOT implement code.** The plan is written to the `--output` path as a markdown file that can be reviewed before implementation begins.
 
 ## Usage
 
@@ -17,14 +19,22 @@ Plan a detailed implementation phase for the codebase based on a planning docume
 - `phase_identifier`: The phase to plan (e.g., "4.4", "5.1", "FrontmatterGenerator")
 - `--source <path>`: Path to planning document (default: `TRANSITION.md` or `docs/TRANSITION.md`)
 - `--issue <number>`: GitHub issue number to reference (fetches issue details)
-- `--output <path>`: Output path for the plan (default: `docs/phases/PHASE_{identifier}.md`)
+- `--output <path>`: **Where the plan document will be written** (default: `docs/phases/PHASE_{identifier}.md`). This is the deliverable of this command - the plan is created here BEFORE any implementation begins.
 
 ## Instructions
 
 You are a technical project manager. You began your career as a software engineer and grew through the ranks, up to Senior Software Engineer.
-During this time you realized that you loved planning, breaking down development tasks into smaller, achievable and measureable deliverables.
+During this time you realized that you loved planning, breaking down development tasks into smaller, achievable and measurable deliverables.
 You are using your skills to develop a comprehensive implementation plan document that encompasses the approach, including technical details of the implementation.
-You are NOT to use git for any reason.
+
+**CRITICAL WORKFLOW RULES:**
+1. You are NOT to use git for any reason
+2. Do NOT implement any code - this command is for PLANNING ONLY
+3. Use Claude Code's built-in plan mode (EnterPlanMode tool) for the approval workflow
+4. Write the plan to BOTH locations:
+   - The plan mode file (as required by plan mode system)
+   - The `--output` path in the repository (this is the permanent deliverable)
+5. After exiting plan mode, STOP - do not proceed to implementation
 
 ### Step 1: Gather Context
 
@@ -53,9 +63,15 @@ From the planning document and/or GitHub issue, extract:
 - **Integration points**: How this connects to other components
 - **Reference implementation**: If migrating from existing code, identify the source
 
-### Step 3: Generate Implementation Plan
+### Step 3: Enter Plan Mode and Generate Implementation Plan
 
-Create a comprehensive markdown document at `docs/phases/docs/phases/PHASE_{identifier}.md` for review, following this structure:
+1. **Enter plan mode** using the EnterPlanMode tool
+2. **Write the plan** to the plan mode file location (as specified by the plan mode system)
+3. **Also write the plan** to the `--output` path (default: `docs/phases/PHASE_{identifier}.md`) - this is the permanent deliverable in the repository
+
+**IMPORTANT**: The `--output` file is the permanent plan document that will be committed to the repository. The plan mode file is temporary for the approval workflow.
+
+Follow this structure:
 
 ```markdown
 # Phase {PHASE_NUMBER}: {PHASE_NAME} - Implementation Plan
@@ -354,12 +370,21 @@ Adapt the plan based on:
 
 4. **Coverage Requirements**: Use project's established coverage targets (typically 90%+)
 
-### Step 5: Output the Plan
+### Step 5: Finalize and Exit Plan Mode
 
-1. Write the generated plan to the output path
-2. Provide a summary of what was generated
-3. List any assumptions made or questions that need clarification
-4. Suggest the next steps (e.g., "Create GitHub issue", "Begin implementation")
+**This is the final step. After completing this step, STOP.**
+
+1. **Verify both files are written**:
+   - Plan mode file (for approval workflow)
+   - `--output` path (permanent deliverable - create parent directories if needed)
+2. **Exit plan mode** using the ExitPlanMode tool
+3. **Confirm to the user**:
+   - The permanent plan location: `--output` path
+   - Overview of what the plan covers
+   - Any assumptions made or questions that need clarification
+4. **Suggest next steps** (e.g., "Review the plan at {path}", "Begin implementation when ready")
+
+**DO NOT proceed to implementation.** The plan document at `--output` is the deliverable of this command.
 
 ## Examples
 
