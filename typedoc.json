@@ -1,0 +1,16 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": ["src/index.ts"],
+  "out": "docs-site",
+  "name": "@alvincrespo/hashnode-content-converter",
+  "readme": "docs/guides/README.md",
+  "includeVersion": true,
+  "excludePrivate": true,
+  "excludeInternal": true,
+  "navigationLinks": {
+    "GitHub": "https://github.com/alvincrespo/hashnode-content-converter",
+    "npm": "https://www.npmjs.com/package/@alvincrespo/hashnode-content-converter"
+  },
+  "plugin": [],
+  "githubPages": true
+}

@@ -18,3 +18,6 @@ npm-debug.log*
 blog/
 hashnode/
 .DS_Store
+
+# Generated documentation
+docs-site/
