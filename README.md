@@ -368,6 +368,15 @@ import { Converter, PostParser, ImageProcessor } from '@alvincrespo/hashnode-con
 
 ## Documentation
 
+**API Reference**: [alvincrespo.github.io/hashnode-content-converter](https://alvincrespo.github.io/hashnode-content-converter/)
+
+Additional documentation:
+- [Getting Started Guide](https://alvincrespo.github.io/hashnode-content-converter/documents/getting-started.html) - Installation and basic usage
+- [CLI Reference](https://alvincrespo.github.io/hashnode-content-converter/documents/cli-usage.html) - Command-line options
+- [Programmatic API](https://alvincrespo.github.io/hashnode-content-converter/documents/programmatic-api.html) - Using the converter in code
+- [Advanced Usage](https://alvincrespo.github.io/hashnode-content-converter/documents/advanced.html) - Custom processors and events
+
+Internal documentation:
 - [docs/TRANSITION.md](docs/TRANSITION.md) - Architecture and implementation history
 - [CLAUDE.md](CLAUDE.md) - Project guidelines for development
 - [docs/phases/](docs/phases/) - Phase-by-phase implementation plans

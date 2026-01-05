@@ -20,7 +20,10 @@
     "type-check": "tsc --noEmit",
     "generate-issues": "npx ts-node scripts/generate-issues.ts",
     "generate-issues:dry": "npx ts-node scripts/generate-issues.ts --dry-run",
-    "prepublishOnly": "npm run build && npm test"
+    "prepublishOnly": "npm run build && npm test",
+    "docs": "typedoc",
+    "docs:watch": "typedoc --watch",
+    "docs:serve": "npx serve docs-site"
   },
   "keywords": [
     "hashnode",
@@ -48,6 +51,7 @@
     "@vitest/coverage-v8": "^4.0.3",
     "@vitest/ui": "^4.0.0",
     "eslint": "^9.0.0",
+    "typedoc": "^0.28.15",
     "typescript": "^5.0.0",
     "vitest": "^4.0.0"
   },
