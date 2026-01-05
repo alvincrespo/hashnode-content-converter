@@ -38,16 +38,16 @@ import { Converter } from '@alvincrespo/hashnode-content-converter';
 const converter = new Converter();
 
 // Subscribe to events
-converter.on('post-started', ({ index, total, title }) => {
-  console.log(`Starting: ${title}`);
+converter.on('conversion-starting', ({ post, index, total }) => {
+  console.log(`[${index}/${total}] Starting: ${post.title}`);
 });
 
-converter.on('post-completed', ({ slug, outputPath }) => {
-  console.log(`Completed: ${slug} -> ${outputPath}`);
+converter.on('conversion-completed', ({ result, durationMs }) => {
+  console.log(`Completed: ${result.slug} in ${durationMs}ms`);
 });
 
-converter.on('conversion-error', ({ slug, message }) => {
-  console.error(`Error in ${slug}: ${message}`);
+converter.on('conversion-error', ({ type, slug, message }) => {
+  console.error(`[${type}] Error in ${slug}: ${message}`);
 });
 
 const result = await converter.convertAllPosts('./export.json', './blog');
@@ -75,9 +75,12 @@ Customize conversion behavior:
 import { Converter, ConversionOptions } from '@alvincrespo/hashnode-content-converter';
 
 const options: ConversionOptions = {
-  skipExisting: true,      // Skip posts that already exist
-  downloadDelayMs: 100,    // Delay between image downloads
-  flatOutput: false,       // Use nested directory structure
+  skipExisting: true,           // Skip posts that already exist
+  downloadOptions: {
+    downloadDelayMs: 100,       // Delay between image downloads
+    maxRetries: 3,              // Retry failed downloads
+    timeoutMs: 30000,           // HTTP request timeout
+  },
 };
 
 const result = await Converter.fromExportFile(
@@ -93,12 +96,10 @@ The `Converter` emits events during conversion:
 
 | Event | Payload | Description |
 |-------|---------|-------------|
-| `post-started` | `{ index, total, title, slug }` | Post conversion started |
-| `post-completed` | `{ slug, outputPath }` | Post converted successfully |
-| `post-skipped` | `{ slug, reason }` | Post skipped |
-| `conversion-error` | `{ slug, message, error? }` | Post conversion failed |
-| `image-downloaded` | `{ url, outputPath }` | Image downloaded |
-| `image-failed` | `{ url, error }` | Image download failed |
+| `conversion-starting` | `{ post, index, total }` | Post conversion starting |
+| `conversion-completed` | `{ result, index, total, durationMs }` | Post conversion completed |
+| `image-downloaded` | `{ filename, postSlug, success, error?, is403? }` | Image download attempted |
+| `conversion-error` | `{ type, slug?, message }` | Conversion error occurred |
 
 ## Working with Post Data
 

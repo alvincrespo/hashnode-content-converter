@@ -14,27 +14,30 @@ const converter = new Converter();
 // Track progress with custom UI
 let startTime: number;
 
-converter.on('conversion-started', ({ total }) => {
-  startTime = Date.now();
-  console.log(`Starting conversion of ${total} posts...`);
-});
-
-converter.on('post-started', ({ index, total, title }) => {
+converter.on('conversion-starting', ({ post, index, total }) => {
+  if (index === 1) {
+    startTime = Date.now();
+    console.log(`Starting conversion of ${total} posts...`);
+  }
   const percent = Math.round((index / total) * 100);
-  process.stdout.write(`\r[${percent}%] ${title.slice(0, 40)}...`);
+  process.stdout.write(`\r[${percent}%] ${post.title.slice(0, 40)}...`);
 });
 
-converter.on('post-completed', ({ slug }) => {
+converter.on('conversion-completed', ({ result, index, total, durationMs }) => {
   // Update progress bar, log to file, etc.
+  console.log(`Completed ${result.slug} in ${durationMs}ms`);
 });
 
-converter.on('image-downloaded', ({ url }) => {
+converter.on('image-downloaded', ({ filename, postSlug, success, error }) => {
   // Track image downloads for analytics
+  if (!success) {
+    console.warn(`Failed to download ${filename} for ${postSlug}: ${error}`);
+  }
 });
 
-converter.on('conversion-error', ({ slug, message, error }) => {
+converter.on('conversion-error', ({ type, slug, message }) => {
   // Send to error tracking service
-  errorTracker.capture(error, { slug, message });
+  console.error(`[${type}] ${slug}: ${message}`);
 });
 
 const result = await converter.convertAllPosts('./export.json', './blog');
@@ -55,9 +58,9 @@ const parser = new PostParser();
 const metadata = parser.parse(hashnodePost);
 
 // metadata contains:
-// - title, slug, date, tags
-// - coverImage, canonicalUrl
-// - brief, subtitle
+// - title, slug, dateAdded, brief
+// - contentMarkdown
+// - coverImage (optional), tags (optional)
 ```
 
 ### MarkdownTransformer
@@ -209,14 +212,21 @@ import { Converter } from '@alvincrespo/hashnode-content-converter';
 
 const converter = new Converter();
 
-converter.on('image-failed', ({ url, error, is403 }) => {
-  if (is403) {
-    // Image is permanently inaccessible
-    console.log(`Access denied: ${url}`);
-    // Consider using a placeholder image
-  } else {
-    // Transient error, might work on retry
-    console.log(`Download failed: ${url}`);
+converter.on('image-downloaded', ({ filename, postSlug, success, error, is403 }) => {
+  if (success) {
+    // Ignore successful downloads
+    return;
+  }
+
+  if (!success) {
+    if (is403) {
+      // Image is permanently inaccessible
+      console.log(`Access denied: ${filename} in ${postSlug}`);
+      // Consider using a placeholder image
+    } else {
+      // Transient error, might work on retry
+      console.log(`Download failed: ${filename} - ${error}`);
+    }
   }
 });
 ```
@@ -229,21 +239,24 @@ Use the built-in logger for tracking:
 import { Logger } from '@alvincrespo/hashnode-content-converter';
 
 const logger = new Logger({
-  logFile: './conversion.log',
-  consoleOutput: true,
+  filePath: './conversion.log',  // Optional: auto-generates if not provided
+  verbosity: 'normal',           // 'quiet' | 'normal' | 'verbose'
 });
 
 // Log conversion events
 logger.info('Starting conversion');
 logger.warn('Skipping draft post');
-logger.error('Failed to download image', { url, error });
+logger.error(`Failed to download image: ${url}`);
+logger.success('Post converted successfully');
 
-// Track HTTP 403 errors separately
-logger.track403(url);
+// Track HTTP 403 errors separately (for detailed reporting)
+logger.trackHttp403(slug, filename, url);
 
-// Get summary
-const summary = logger.getSummary();
-console.log(`403 errors: ${summary.http403Count}`);
+// Write summary at end of conversion
+logger.writeSummary(converted, skipped, errors);
+
+// Close file stream when done
+await logger.close();
 ```
 
 ## Integration Examples
