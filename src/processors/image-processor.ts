@@ -1,11 +1,11 @@
-import * as fs from 'fs';
-import * as path from 'path';
-import { ImageDownloader } from '../services/image-downloader';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import { ImageDownloader } from '../services/image-downloader.js';
 import type {
   ImageProcessorOptions,
   ImageProcessingResult,
   ImageProcessingError,
-} from '../types/image-processor';
+} from '../types/image-processor.js';
 
 /**
  * ImageProcessor handles downloading images from Hashnode CDN and updating

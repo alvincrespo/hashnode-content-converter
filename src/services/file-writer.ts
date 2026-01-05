@@ -1,5 +1,5 @@
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 
 /**
  * Configuration options for FileWriter service
@@ -34,15 +34,15 @@ export class FileWriteError extends Error {
    * @param message - Error description
    * @param path - File or directory path where error occurred
    * @param operation - Type of operation that failed
-   * @param cause - Original error that caused this failure
+   * @param cause - Original error that caused this failure (uses native Error.cause)
    */
   constructor(
     message: string,
     public readonly path: string,
     public readonly operation: 'validate_path' | 'create_dir' | 'write_file' | 'rename_file',
-    public readonly cause?: Error
+    cause?: Error
   ) {
-    super(message);
+    super(message, { cause });
     this.name = 'FileWriteError';
   }
 }

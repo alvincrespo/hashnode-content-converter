@@ -2,11 +2,16 @@
 /* eslint-disable no-console */
 
 import { Command } from 'commander';
-import * as fs from 'fs';
-import * as path from 'path';
-import { Converter } from '../converter';
-import { ConversionOptions, LoggerConfig } from '../types/converter-options';
-import { ConversionResult } from '../types/conversion-result';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { Converter } from '../converter.js';
+import type { ConversionOptions, LoggerConfig } from '../types/converter-options.js';
+import type { ConversionResult } from '../types/conversion-result.js';
+
+// ESM equivalents for __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // =============================================================================
 // Types
@@ -336,11 +341,12 @@ program
   });
 
 // Export for testing
-export { program, runConvert, CLIOptions, ValidatedOptions };
+export { program, runConvert };
+export type { CLIOptions, ValidatedOptions };
 
 // Parse arguments and execute only when run directly (not imported)
-// Check if this module is being run directly via node
-const isMainModule = require.main === module;
+// ESM equivalent of require.main === module
+const isMainModule = process.argv[1] === fileURLToPath(import.meta.url);
 if (isMainModule) {
   program.parse();
 }

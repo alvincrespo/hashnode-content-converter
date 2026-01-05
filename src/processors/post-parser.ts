@@ -1,4 +1,4 @@
-import { HashnodePost, PostMetadata } from '../types/hashnode-schema';
+import type { HashnodePost, PostMetadata } from '../types/hashnode-schema.js';
 
 /**
  * PostParser extracts and validates metadata from Hashnode posts

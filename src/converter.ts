@@ -1,24 +1,24 @@
-import { EventEmitter } from 'events';
-import * as fs from 'fs';
-import * as path from 'path';
+import { EventEmitter } from 'node:events';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 
-import { PostParser } from './processors/post-parser';
-import { MarkdownTransformer } from './processors/markdown-transformer';
-import { ImageProcessor } from './processors/image-processor';
-import { FrontmatterGenerator } from './processors/frontmatter-generator';
-import { FileWriter } from './services/file-writer';
-import { Logger } from './services/logger';
+import { PostParser } from './processors/post-parser.js';
+import { MarkdownTransformer } from './processors/markdown-transformer.js';
+import { ImageProcessor } from './processors/image-processor.js';
+import { FrontmatterGenerator } from './processors/frontmatter-generator.js';
+import { FileWriter } from './services/file-writer.js';
+import { Logger } from './services/logger.js';
 
-import { HashnodePost, HashnodeExport } from './types/hashnode-schema';
-import { ConversionOptions } from './types/converter-options';
-import { ConversionResult, ConvertedPost, ConversionError } from './types/conversion-result';
-import {
+import type { HashnodePost, HashnodeExport } from './types/hashnode-schema.js';
+import type { ConversionOptions } from './types/converter-options.js';
+import type { ConversionResult, ConvertedPost, ConversionError } from './types/conversion-result.js';
+import type {
   ConverterEventMap,
   ConversionStartingEvent,
   ConversionCompletedEvent,
   ImageDownloadedEvent,
   ConversionErrorEvent,
-} from './types/converter-events';
+} from './types/converter-events.js';
 
 /**
  * Optional dependencies for testing via dependency injection
@@ -490,7 +490,7 @@ export class Converter extends EventEmitter {
     } catch (error) {
       const message = `Invalid JSON in export file: ${error instanceof Error ? error.message : 'Parse error'}`;
       this.emitFatalError(message);
-      throw new Error(message);
+      throw new Error(message, { cause: error });
     }
 
     // Validate structure
@@ -526,7 +526,7 @@ export class Converter extends EventEmitter {
     } catch (error) {
       const message = `Cannot create output directory: ${error instanceof Error ? error.message : 'Unknown error'}`;
       this.emitFatalError(message);
-      throw new Error(message);
+      throw new Error(message, { cause: error });
     }
   }
 

@@ -1,4 +1,4 @@
-import { PostMetadata } from '../types/hashnode-schema';
+import type { PostMetadata } from '../types/hashnode-schema.js';
 
 /**
  * FrontmatterGenerator handles the creation of YAML frontmatter
