@@ -4,6 +4,12 @@
   "out": "docs-site",
   "name": "@alvincrespo/hashnode-content-converter",
   "readme": "docs/guides/README.md",
+  "projectDocuments": [
+    "docs/guides/getting-started.md",
+    "docs/guides/cli-usage.md",
+    "docs/guides/programmatic-api.md",
+    "docs/guides/advanced.md"
+  ],
   "includeVersion": true,
   "excludePrivate": true,
   "excludeInternal": true,
