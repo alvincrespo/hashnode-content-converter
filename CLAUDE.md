@@ -15,12 +15,12 @@ Reference: [TRANSITION.md](TRANSITION.md) contains the full implementation roadm
 ## Tech Stack
 
 - **Runtime**: Node.js >=18.0.0 (using nvm for version management)
-- **Language**: TypeScript 5.0+ (target: ES2020, module: CommonJS)
+- **Language**: TypeScript 5.0+ (target: ES2022, module: NodeNext)
 - **Build**: TypeScript compiler with incremental builds
 - **Testing**: Vitest with @vitest/ui dashboard
 - **Linting**: ESLint + @typescript-eslint
 - **CLI**: commander.js for argument parsing
-- **Package Manager**: npm (CommonJS, published to npm registry)
+- **Package Manager**: npm (ESM with `"type": "module"`, published to npm registry)
 
 ## Environment Setup (IMPORTANT)
 
@@ -240,7 +240,8 @@ npx @alvincrespo/hashnode-content-converter convert --export ./export.json --out
 - **Main entry**: [dist/index.ts](src/index.ts) (compiles to dist/index.js)
 - **Types entry**: dist/index.d.ts (auto-generated)
 - **CLI entry**: [dist/cli/convert.js](src/cli/convert.ts)
-- **Output format**: CommonJS for Node.js >=18
+- **Output format**: ESM (ECMAScript Modules) for Node.js >=18
+- **Module settings**: `"type": "module"` in package.json, `verbatimModuleSyntax: true` in tsconfig
 
 Build configuration excludes tests and uses [tsconfig.build.json](tsconfig.build.json).
 

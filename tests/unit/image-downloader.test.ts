@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import * as fs from 'fs';
-import * as https from 'https';
-import { ImageDownloader } from '../../src/services/image-downloader';
+import * as fs from 'node:fs';
+import * as https from 'node:https';
+import { ImageDownloader } from '../../src/services/image-downloader.js';
 import {
   createMockResponse,
   createMockFileStream,
@@ -11,11 +11,11 @@ import {
   createSuccessDownloadMock,
   createBadRedirectMock,
   createResponseStreamErrorMock,
-} from '../mocks/mocks';
+} from '../mocks/mocks.js';
 
 // Mock modules
-vi.mock('https');
-vi.mock('fs');
+vi.mock('node:https');
+vi.mock('node:fs');
 
 describe('ImageDownloader', () => {
   let downloader: ImageDownloader;

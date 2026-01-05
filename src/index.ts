@@ -33,43 +33,42 @@
 // -----------------------------------------------------------------------------
 // Main Converter Class
 // -----------------------------------------------------------------------------
-export { Converter, ConverterDependencies } from './converter';
+export { Converter } from './converter.js';
+export type { ConverterDependencies } from './converter.js';
 
 // -----------------------------------------------------------------------------
 // Type Definitions
 // -----------------------------------------------------------------------------
-export * from './types/hashnode-schema';
-export * from './types/converter-options';
-export * from './types/conversion-result';
-export * from './types/converter-events';
+export * from './types/hashnode-schema.js';
+export * from './types/converter-options.js';
+export * from './types/conversion-result.js';
+export * from './types/converter-events.js';
 
 // -----------------------------------------------------------------------------
 // Services (for advanced users)
 // -----------------------------------------------------------------------------
-export { ImageDownloader } from './services/image-downloader';
+export { ImageDownloader } from './services/image-downloader.js';
 export type {
   ImageDownloadConfig,
   DownloadResult,
-} from './services/image-downloader';
+} from './services/image-downloader.js';
 
-export { FileWriter, FileWriteError } from './services/file-writer';
-export type { FileWriterConfig } from './services/file-writer';
+export { FileWriter, FileWriteError } from './services/file-writer.js';
+export type { FileWriterConfig } from './services/file-writer.js';
 
-export { Logger } from './services/logger';
+export { Logger } from './services/logger.js';
 
 // -----------------------------------------------------------------------------
 // Processors (for advanced users)
 // -----------------------------------------------------------------------------
-export { PostParser } from './processors/post-parser';
-export {
-  MarkdownTransformer,
-  MarkdownTransformerOptions,
-} from './processors/markdown-transformer';
-export { ImageProcessor } from './processors/image-processor';
-export { FrontmatterGenerator } from './processors/frontmatter-generator';
+export { PostParser } from './processors/post-parser.js';
+export { MarkdownTransformer } from './processors/markdown-transformer.js';
+export type { MarkdownTransformerOptions } from './processors/markdown-transformer.js';
+export { ImageProcessor } from './processors/image-processor.js';
+export { FrontmatterGenerator } from './processors/frontmatter-generator.js';
 
 export type {
   ImageProcessorOptions,
   ImageProcessingResult,
   ImageProcessingError,
-} from './types/image-processor';
+} from './types/image-processor.js';

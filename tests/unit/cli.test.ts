@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 
 import {
   validateExportPath,
@@ -13,11 +13,11 @@ import {
   createProgressBar,
   createProgressCallback,
   displayResult,
-} from '../../src/cli/convert';
-import { ConversionResult } from '../../src/types/conversion-result';
+} from '../../src/cli/convert.js';
+import type { ConversionResult } from '../../src/types/conversion-result.js';
 
 // Mock fs module
-vi.mock('fs');
+vi.mock('node:fs');
 
 describe('CLI', () => {
   beforeEach(() => {

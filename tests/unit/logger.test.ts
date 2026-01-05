@@ -1,16 +1,16 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import * as fs from 'fs';
-import * as path from 'path';
-import { Logger } from '../../src/services/logger';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import { Logger } from '../../src/services/logger.js';
 import {
   createMockWriteStream,
   createMockConsole,
   mockDateNow,
-} from '../mocks/mocks';
+} from '../mocks/mocks.js';
 
 // Mock fs and path modules
-vi.mock('fs');
-vi.mock('path');
+vi.mock('node:fs');
+vi.mock('node:path');
 
 describe('Logger', () => {
   let mockWriteStream: ReturnType<typeof createMockWriteStream>;

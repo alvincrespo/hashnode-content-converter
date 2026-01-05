@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { FileWriter, FileWriteError } from '../../src/services/file-writer';
+import { FileWriter, FileWriteError } from '../../src/services/file-writer.js';
 
 // Mock fs and path modules
-vi.mock('fs');
-vi.mock('fs/promises');
+vi.mock('node:fs');
+vi.mock('node:fs/promises');
 
-import * as fs from 'fs';
+import * as fs from 'node:fs';
 
 describe('FileWriter', () => {
   let fileWriter: FileWriter;

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { MarkdownTransformer } from '../../src/processors/markdown-transformer';
+import { MarkdownTransformer } from '../../src/processors/markdown-transformer.js';
 
 describe('MarkdownTransformer', () => {
   describe('constructor', () => {

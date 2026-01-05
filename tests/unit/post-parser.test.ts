@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { PostParser } from '../../src/processors/post-parser';
-import { HashnodePost } from '../../src/types/hashnode-schema';
+import { PostParser } from '../../src/processors/post-parser.js';
+import type { HashnodePost } from '../../src/types/hashnode-schema.js';
 
 describe('PostParser', () => {
   // Helper function to create a valid HashnodePost

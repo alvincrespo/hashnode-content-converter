@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { FrontmatterGenerator } from '../../src/processors/frontmatter-generator';
-import { PostMetadata } from '../../src/types/hashnode-schema';
+import { FrontmatterGenerator } from '../../src/processors/frontmatter-generator.js';
+import type { PostMetadata } from '../../src/types/hashnode-schema.js';
 
 describe('FrontmatterGenerator', () => {
   const generator = new FrontmatterGenerator();

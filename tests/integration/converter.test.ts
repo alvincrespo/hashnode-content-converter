@@ -1,16 +1,16 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import * as fs from 'fs';
-import * as path from 'path';
-import { Converter, ConverterDependencies } from '../../src/converter';
-import { PostParser } from '../../src/processors/post-parser';
-import { MarkdownTransformer } from '../../src/processors/markdown-transformer';
-import { ImageProcessor } from '../../src/processors/image-processor';
-import { FrontmatterGenerator } from '../../src/processors/frontmatter-generator';
-import { FileWriter } from '../../src/services/file-writer';
-import { Logger } from '../../src/services/logger';
-import { HashnodePost } from '../../src/types/hashnode-schema';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import { Converter, ConverterDependencies } from '../../src/converter.js';
+import { PostParser } from '../../src/processors/post-parser.js';
+import { MarkdownTransformer } from '../../src/processors/markdown-transformer.js';
+import { ImageProcessor } from '../../src/processors/image-processor.js';
+import { FrontmatterGenerator } from '../../src/processors/frontmatter-generator.js';
+import { FileWriter } from '../../src/services/file-writer.js';
+import { Logger } from '../../src/services/logger.js';
+import type { HashnodePost } from '../../src/types/hashnode-schema.js';
 // Mock fs module
-vi.mock('fs');
+vi.mock('node:fs');
 
 describe('Converter', () => {
   let converter: Converter;

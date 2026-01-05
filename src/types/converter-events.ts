@@ -22,8 +22,8 @@
  * ```
  */
 
-import { HashnodePost } from './hashnode-schema';
-import { ConvertedPost } from './conversion-result';
+import type { HashnodePost } from './hashnode-schema.js';
+import type { ConvertedPost } from './conversion-result.js';
 
 /**
  * Event payload emitted before a post conversion begins.

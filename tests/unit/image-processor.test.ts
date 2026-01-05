@@ -1,12 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import * as fs from 'fs';
-import * as path from 'path';
-import { ImageProcessor } from '../../src/processors/image-processor';
-import { ImageDownloader } from '../../src/services/image-downloader';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import { ImageProcessor } from '../../src/processors/image-processor.js';
+import { ImageDownloader } from '../../src/services/image-downloader.js';
 
 // Mock modules
-vi.mock('fs');
-vi.mock('../../src/services/image-downloader');
+vi.mock('node:fs');
+vi.mock('../../src/services/image-downloader.js');
 
 describe('ImageProcessor', () => {
   let processor: ImageProcessor;

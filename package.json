@@ -2,6 +2,7 @@
   "name": "@alvincrespo/hashnode-content-converter",
   "version": "0.2.0",
   "description": "Convert Hashnode blog exports to framework-agnostic Markdown with YAML frontmatter",
+  "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {

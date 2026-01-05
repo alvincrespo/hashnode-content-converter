@@ -357,9 +357,14 @@ const { processPost, downloadImage } = require('./convert-hashnode');
 ```
 
 ```typescript
-// New: TypeScript with full type support
+// New: ESM TypeScript with full type support
 import { Converter, PostParser, ImageProcessor } from '@alvincrespo/hashnode-content-converter';
 ```
+
+> **Note**: This package uses ESM (ECMAScript Modules). If your project uses CommonJS, you'll need to use dynamic imports:
+> ```javascript
+> const { Converter } = await import('@alvincrespo/hashnode-content-converter');
+> ```
 
 ## Documentation
 
