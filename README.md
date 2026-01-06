@@ -269,30 +269,54 @@ npm run test:coverage  # Generate detailed coverage report
 
 ## Releasing
 
-This package uses GitHub Actions for automated npm publishing.
+This package uses a PR-based release workflow with GitHub Actions for automated npm publishing.
 
-### Automated Release (Recommended)
+### Release Process
 
-1. **Update version** in `package.json`:
+Releases follow a PR-based workflow to ensure CI passes before publishing:
+
+```
+/release patch → Create PR → CI passes → Merge → Auto-tag → npm publish
+```
+
+**Steps:**
+
+1. **Create release PR**: Run the release command (or manually create a `release/v*` branch)
    ```bash
-   npm version patch  # or minor, major
+   npm version patch --no-git-tag-version  # or minor, major
+   git checkout -b release/v0.2.4
+   git add package.json package-lock.json
+   git commit -m "chore: bump version to 0.2.4"
+   git push -u origin release/v0.2.4
+   # Create PR via GitHub
    ```
 
-2. **Push the tag** to trigger the release workflow:
-   ```bash
-   git push origin main --tags
-   ```
+2. **Wait for CI**: Tests, linting, and type-checking must pass
 
-3. The GitHub Action will automatically:
-   - Run lint and type-check
-   - Run tests
-   - Build the package
-   - Publish to npm
-   - Create a GitHub Release with auto-generated notes
+3. **Merge PR**: After approval and CI passes
+
+4. **Automatic tagging**: The `auto-tag-release.yml` workflow automatically:
+   - Detects the merged `release/v*` branch
+   - Creates and pushes the `v<version>` tag
+
+5. **Automatic publishing**: The `release.yml` workflow then:
+   - Runs lint, type-check, and tests
+   - Builds the package
+   - Publishes to npm
+   - Creates a GitHub Release with auto-generated notes
+
+### Skipping Auto-Release
+
+To merge a release PR without publishing (e.g., for testing):
+
+- Include `[SKIP RELEASE]` in the PR title
+- Example: `[SKIP RELEASE] chore: bump version to 0.2.4`
+
+You can manually create and push the tag later when ready.
 
 ### Manual Release
 
-For manual publishing:
+For manual publishing without the automated workflow:
 
 ```bash
 # Build and test
@@ -308,9 +332,9 @@ npm publish --access public
 ### Pre-release Checklist
 
 - [ ] All tests passing (`npm test`)
-- [ ] CHANGELOG.md updated with new version
 - [ ] Version bumped in package.json
 - [ ] No uncommitted changes
+- [ ] Release PR created from `release/v*` branch
 
 ## Migrating from convert-hashnode.js
 

@@ -1,0 +1,29 @@
+name: Auto Tag Release
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+jobs:
+  tag:
+    if: >
+      github.event.pull_request.merged == true &&
+      startsWith(github.head_ref, 'release/v') &&
+      !contains(github.event.pull_request.title, '[SKIP RELEASE]')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Extract version and create tag
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "Creating tag v$VERSION"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "v$VERSION"
+          git push origin "v$VERSION"

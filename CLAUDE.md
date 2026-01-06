@@ -352,6 +352,61 @@ When implementing or modifying a service or processor, verify completeness with:
 
 **Coverage Goal**: 80%+ overall project coverage, 90%+ for new implementations. Current project coverage (99.36%) exceeds all targets.
 
+## Releasing
+
+This project uses an automated release workflow with GitHub Actions. Releases go through a PR-based process to ensure CI passes before publishing.
+
+### Release Command
+
+Use the `/release` Claude command to cut a new release:
+
+```bash
+/release patch   # Bug fixes: 0.2.2 → 0.2.3
+/release minor   # New features: 0.2.2 → 0.3.0
+/release major   # Breaking changes: 0.2.2 → 1.0.0
+```
+
+### Release Workflow
+
+The `/release` command automates the following process:
+
+1. **Create release branch**: `release/v<new-version>` from main
+2. **Bump version**: Updates package.json (without creating a tag)
+3. **Push and create PR**: Opens a PR for review
+4. **CI runs**: Tests, linting, and type-checking must pass
+5. **Merge PR**: After approval and CI passes
+6. **Auto-tag** (GitHub Action): The [auto-tag-release.yml](.github/workflows/auto-tag-release.yml) workflow automatically creates and pushes the `v<version>` tag
+7. **Publish** (GitHub Action): The [release.yml](.github/workflows/release.yml) workflow publishes to npm and creates a GitHub Release
+
+### Skipping Auto-Tag
+
+To merge a release PR without triggering the npm publish (e.g., for testing):
+
+- Include `[SKIP RELEASE]` in the PR title
+- Example: `[SKIP RELEASE] chore: bump version to 0.2.3`
+
+After merging, you can manually tag later using `/release tag`.
+
+### Manual Tagging
+
+If auto-tagging was skipped, use:
+
+```bash
+/release tag
+```
+
+This will:
+1. Pull the latest main branch
+2. Read the version from package.json
+3. Create and push the `v<version>` tag
+4. Trigger the release workflow
+
+### Related Files
+
+- [.claude/commands/release.md](.claude/commands/release.md) - The `/release` command definition
+- [.github/workflows/auto-tag-release.yml](.github/workflows/auto-tag-release.yml) - Auto-tags merged release PRs
+- [.github/workflows/release.yml](.github/workflows/release.yml) - Publishes to npm on tag push
+
 ## Key Files to Understand First
 
 1. [TRANSITION.md](TRANSITION.md) - Implementation history and architectural decisions
