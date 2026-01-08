@@ -48,13 +48,15 @@ If there are uncommitted changes, stop and ask the user to commit or stash them 
    - **Type**: <patch|minor|major>
 
    ## After Merge
-   Once this PR is merged, run \`/release tag\` to create and push the release tag."
+   Once this PR is merged, the release tag will be created automatically and the package will be published to npm.
+
+   To skip automatic tagging, add \`[SKIP RELEASE]\` to the PR title."
    ```
 10. Tell the user the PR has been created and they should wait for checks to pass and merge
 
-### Phase 2: Create Release Tag (after PR is merged)
+### Phase 2: Create Release Tag (only if [SKIP RELEASE] was used)
 
-If the user runs `/release tag`:
+If the user runs `/release tag` (only needed when auto-tagging was skipped):
 
 1. Run `git fetch origin && git checkout main && git pull` to get the merged changes
 2. Read the version from package.json
@@ -66,11 +68,13 @@ If the user runs `/release tag`:
 
 After Phase 1, tell the user:
 - The PR URL
+- The new version number
 - To wait for CI checks to pass
 - To merge the PR
-- To run `/release tag` after merging to trigger the release
+- That after merge, tagging and npm publishing will happen automatically
+- They can monitor progress at: https://github.com/alvincrespo/hashnode-content-converter/actions
 
-After Phase 2, tell the user:
+After Phase 2 (manual tagging), tell the user:
 - The tag that was created
 - That the GitHub Actions release workflow has been triggered
 - They can monitor progress at: https://github.com/alvincrespo/hashnode-content-converter/actions/workflows/release.yml
