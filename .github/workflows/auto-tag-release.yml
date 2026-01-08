@@ -29,10 +29,10 @@ jobs:
 
       - name: Validate version matches branch
         env:
-          GITHUB_HEAD_REF: ${{ github.head_ref }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
         run: |
           TAG="v${{ steps.version.outputs.version }}"
-          BRANCH_VERSION="${GITHUB_HEAD_REF#release/}"
+          BRANCH_VERSION="${HEAD_REF#release/}"
           if [ "$TAG" != "$BRANCH_VERSION" ]; then
             echo "::error::Version mismatch: package.json has $TAG but branch is $BRANCH_VERSION"
             exit 1
