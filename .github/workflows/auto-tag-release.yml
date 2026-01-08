@@ -1,3 +1,12 @@
+# Auto Tag Release
+#
+# Automatically creates and pushes a git tag when a release PR is merged.
+#
+# References:
+# - GitHub Context: https://docs.github.com/en/actions/reference/contexts#github-context
+# - Pull Request Events: https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#pull_request
+# - PR Webhook Payload: https://docs.github.com/en/webhooks/webhook-events-and-payloads#pull_request
+
 name: Auto Tag Release
 
 on:
