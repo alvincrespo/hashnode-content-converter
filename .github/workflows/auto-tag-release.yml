@@ -20,26 +20,39 @@ jobs:
           ref: main
           fetch-depth: 0
 
-      - name: Extract version and create tag
+      - name: Extract version
+        id: version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=v$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Validate version matches branch
         env:
           GITHUB_HEAD_REF: ${{ github.head_ref }}
         run: |
-          VERSION=$(node -p "require('./package.json').version")
-          TAG="v$VERSION"
+          TAG="v${{ steps.version.outputs.version }}"
           BRANCH_VERSION="${GITHUB_HEAD_REF#release/}"
-
           if [ "$TAG" != "$BRANCH_VERSION" ]; then
-            echo "Version mismatch: package.json has $TAG but branch is $BRANCH_VERSION"
+            echo "::error::Version mismatch: package.json has $TAG but branch is $BRANCH_VERSION"
             exit 1
           fi
 
-          if git rev-parse "$TAG" >/dev/null 2>&1; then
-            echo "Tag $TAG already exists, skipping"
-            exit 0
+      - name: Check if tag exists
+        id: tag_check
+        run: |
+          if git rev-parse "${{ steps.version.outputs.tag }}" >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "Tag ${{ steps.version.outputs.tag }} already exists, skipping"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
           fi
 
-          echo "Creating tag $TAG"
+      - name: Create and push tag
+        if: steps.tag_check.outputs.exists == 'false'
+        run: |
+          echo "Creating tag ${{ steps.version.outputs.tag }}"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag "$TAG"
-          git push origin "$TAG"
+          git tag "${{ steps.version.outputs.tag }}"
+          git push origin "${{ steps.version.outputs.tag }}"
