@@ -21,9 +21,17 @@ jobs:
           fetch-depth: 0
 
       - name: Extract version and create tag
+        env:
+          GITHUB_HEAD_REF: ${{ github.head_ref }}
         run: |
           VERSION=$(node -p "require('./package.json').version")
           TAG="v$VERSION"
+          BRANCH_VERSION="${GITHUB_HEAD_REF#release/}"
+
+          if [ "$TAG" != "$BRANCH_VERSION" ]; then
+            echo "Version mismatch: package.json has $TAG but branch is $BRANCH_VERSION"
+            exit 1
+          fi
 
           if git rev-parse "$TAG" >/dev/null 2>&1; then
             echo "Tag $TAG already exists, skipping"
