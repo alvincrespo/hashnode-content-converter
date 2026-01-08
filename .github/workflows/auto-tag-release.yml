@@ -23,8 +23,15 @@ jobs:
       - name: Extract version and create tag
         run: |
           VERSION=$(node -p "require('./package.json').version")
-          echo "Creating tag v$VERSION"
+          TAG="v$VERSION"
+
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG already exists, skipping"
+            exit 0
+          fi
+
+          echo "Creating tag $TAG"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag "v$VERSION"
-          git push origin "v$VERSION"
+          git tag "$TAG"
+          git push origin "$TAG"
