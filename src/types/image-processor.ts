@@ -92,3 +92,29 @@ export interface ImageProcessingError {
    */
   is403: boolean;
 }
+
+/**
+ * Context for image processing that includes output structure information.
+ * Used by ImageProcessor.processWithContext() for flat mode support.
+ */
+export interface ImageProcessorContext {
+  /**
+   * Directory where images should be saved.
+   * In nested mode: {output}/{slug}/
+   * In flat mode: {output}/../_images/
+   */
+  imageDir: string;
+
+  /**
+   * Path prefix for image references in markdown.
+   * In nested mode: '.'
+   * In flat mode: '/images' (or custom prefix)
+   */
+  imagePathPrefix: string;
+
+  /**
+   * Optional custom directory for download markers.
+   * Defaults to {imageDir}/.downloaded-markers/
+   */
+  markerDir?: string;
+}
