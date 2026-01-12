@@ -71,4 +71,5 @@ export type {
   ImageProcessorOptions,
   ImageProcessingResult,
   ImageProcessingError,
+  ImageProcessorContext,
 } from './types/image-processor.js';
