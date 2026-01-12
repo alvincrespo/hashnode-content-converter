@@ -418,4 +418,40 @@ describe('FileWriter', () => {
       }
     });
   });
+
+  describe('outputMode Configuration', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+      vi.mocked(fs.existsSync).mockReturnValue(false);
+      vi.mocked(fs.promises.mkdir).mockResolvedValue(undefined);
+      vi.mocked(fs.promises.writeFile).mockResolvedValue(undefined);
+      vi.mocked(fs.promises.rename).mockResolvedValue(undefined);
+    });
+
+    it('should default outputMode to nested when not provided', async () => {
+      const writer = new FileWriter();
+      const result = await writer.writePost('./blog', 'my-post', '---\n', 'content');
+      // Verify nested behavior (creates {slug}/index.md)
+      expect(result).toContain('my-post/index.md');
+    });
+
+    it('should accept nested outputMode explicitly', async () => {
+      const writer = new FileWriter({ outputMode: 'nested' });
+      const result = await writer.writePost('./blog', 'my-post', '---\n', 'content');
+      expect(result).toContain('my-post/index.md');
+    });
+
+    it('should accept flat outputMode', () => {
+      // For now, just verify the config is accepted without error
+      // Actual flat behavior will be tested in Step 2.3
+      const writer = new FileWriter({ outputMode: 'flat' });
+      expect(writer).toBeInstanceOf(FileWriter);
+    });
+
+    it('should use default values when config is undefined', async () => {
+      const writer = new FileWriter(undefined);
+      const result = await writer.writePost('./blog', 'my-post', '---\n', 'content');
+      expect(result).toContain('my-post/index.md');
+    });
+  });
 });

@@ -23,6 +23,14 @@ export interface FileWriterConfig {
    * @default true
    */
   atomicWrites?: boolean;
+
+  /**
+   * Output mode for file organization:
+   * - 'nested': Creates {slug}/index.md (default)
+   * - 'flat': Creates {slug}.md directly in output directory
+   * @default 'nested'
+   */
+  outputMode?: 'nested' | 'flat';
 }
 
 /**
@@ -52,14 +60,23 @@ export class FileWriteError extends Error {
  * Handles directory creation, file writing, path validation, and error handling
  */
 export class FileWriter {
-  private readonly overwrite: boolean;
-  private readonly encoding: BufferEncoding;
-  private readonly atomicWrites: boolean;
+  /**
+   * Default configuration values
+   */
+  private static readonly DEFAULTS: Required<FileWriterConfig> = {
+    overwrite: false,
+    encoding: 'utf8',
+    atomicWrites: true,
+    outputMode: 'nested',
+  };
+
+  /**
+   * Resolved configuration with defaults applied
+   */
+  private readonly config: Required<FileWriterConfig>;
 
   constructor(config?: FileWriterConfig) {
-    this.overwrite = config?.overwrite ?? false;
-    this.encoding = config?.encoding ?? 'utf8';
-    this.atomicWrites = config?.atomicWrites ?? true;
+    this.config = { ...FileWriter.DEFAULTS, ...config };
   }
 
   /**
@@ -118,7 +135,7 @@ export class FileWriter {
 
     // Write to temp file first
     try {
-      await fs.promises.writeFile(tempPath, content, this.encoding);
+      await fs.promises.writeFile(tempPath, content, this.config.encoding);
     } catch (error) {
       // Cleanup temp file on error (may not exist if write failed early)
       try {
@@ -163,7 +180,7 @@ export class FileWriter {
    */
   private async writeFileDirect(filePath: string, content: string): Promise<void> {
     try {
-      await fs.promises.writeFile(filePath, content, this.encoding);
+      await fs.promises.writeFile(filePath, content, this.config.encoding);
     } catch (error) {
       throw new FileWriteError(
         `Failed to write file: ${error instanceof Error ? error.message : String(error)}`,
@@ -209,7 +226,7 @@ export class FileWriter {
     const filePath = path.join(postDir, 'index.md');
 
     // Check if file exists and handle overwrite behavior
-    if (!this.overwrite && fs.existsSync(filePath)) {
+    if (!this.config.overwrite && fs.existsSync(filePath)) {
       throw new FileWriteError(
         `File already exists and overwrite is disabled: ${filePath}`,
         filePath,
@@ -233,7 +250,7 @@ export class FileWriter {
     const markdown = frontmatter + '\n' + content;
 
     // Write to file using selected strategy
-    if (this.atomicWrites) {
+    if (this.config.atomicWrites) {
       await this.writeFileAtomic(filePath, markdown);
     } else {
       await this.writeFileDirect(filePath, markdown);
