@@ -471,7 +471,7 @@ export class ImageProcessor {
       fs.mkdirSync(markersDir, { recursive: true });
     }
 
-    for (const [, url] of imageMatches) {
+    for (const [_fullMatch, url] of imageMatches) {
       const result = await this.processSingleImage(
         url,
         imageDir,
