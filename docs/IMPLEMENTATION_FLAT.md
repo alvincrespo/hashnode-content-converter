@@ -516,10 +516,10 @@ describe('Flat Output Mode', () => {
 ### Phase 3: ImageProcessor Updates
 
 #### Step 3.1: Add processWithContext Method
-- [ ] Create new `processWithContext()` method that accepts `ImageProcessorContext`
-- [ ] Use provided `imageDir` for downloads instead of inferring from blogDir
-- [ ] Use provided `imagePathPrefix` for markdown URL replacement
-- [ ] Keep existing `process()` method for backwards compatibility
+- [x] Create new `processWithContext()` method that accepts `ImageProcessorContext`
+- [x] Use provided `imageDir` for downloads instead of inferring from blogDir
+- [x] Use provided `imagePathPrefix` for markdown URL replacement
+- [x] Keep existing `process()` method for backwards compatibility
 
 **Proposed Changes to `src/processors/image-processor.ts`:**
 

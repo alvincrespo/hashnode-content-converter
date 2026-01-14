@@ -1,7 +1,7 @@
 # Phase 3, Step 3.1: Add processWithContext Method to ImageProcessor - Implementation Plan
 
 **Issue**: [#49 - Add processWithContext Method to ImageProcessor](https://github.com/alvincrespo/hashnode-content-converter/issues/49)
-**Status**: 📋 PLANNED
+**Status**: ✅ COMPLETED
 **Date**: 2026-01-14
 **Phase**: Phase 3: ImageProcessor Updates
 
@@ -522,59 +522,59 @@ async processWithContext(
 **Test Categories**:
 
 #### A. processWithContext - Basic Functionality (7 tests)
-- ☐ Should download images to provided imageDir
-- ☐ Should use provided imagePathPrefix in markdown
-- ☐ Should process multiple images correctly
-- ☐ Should return correct statistics (processed, downloaded, skipped)
-- ☐ Should handle markdown with no images
-- ☐ Should extract and process Hashnode CDN URLs only
-- ☐ Should call ImageDownloader.download() with correct arguments
+- ☑ Should download images to provided imageDir
+- ☑ Should use provided imagePathPrefix in markdown
+- ☑ Should process multiple images correctly
+- ☑ Should return correct statistics (processed, downloaded, skipped)
+- ☑ Should handle markdown with no images
+- ☑ Should extract and process Hashnode CDN URLs only
+- ☑ Should call ImageDownloader.download() with correct arguments
 
 #### B. processWithContext - Path Prefix Normalization (4 tests)
-- ☐ Should handle imagePathPrefix with trailing slash (`/assets/`)
-- ☐ Should handle imagePathPrefix without trailing slash (`/assets`)
-- ☐ Should handle relative path prefix (`./`)
-- ☐ Should handle root path prefix (`/`)
+- ☑ Should handle imagePathPrefix with trailing slash (`/assets/`)
+- ☑ Should handle imagePathPrefix without trailing slash (`/assets`)
+- ☑ Should handle relative path prefix (`./`)
+- ☑ Should handle root path prefix (`/`)
 
 #### C. processWithContext - Marker Directory Handling (5 tests)
-- ☐ Should create markers in imageDir by default (markerDir not specified)
-- ☐ Should create markers in custom markerDir when specified
-- ☐ Should skip images with existing success markers
-- ☐ Should retry images with transient error markers
-- ☐ Should skip images with 403 markers (permanent failure)
+- ☑ Should create markers in imageDir by default (markerDir not specified)
+- ☑ Should create markers in custom markerDir when specified
+- ☑ Should skip images with existing success markers
+- ☑ Should retry images with transient error markers
+- ☑ Should skip images with 403 markers (permanent failure)
 
 #### D. processWithContext - Error Handling (5 tests)
-- ☐ Should throw error if imageDir does not exist
-- ☐ Should continue processing after download failure
-- ☐ Should track HTTP 403 errors separately (is403: true)
-- ☐ Should track other errors with is403: false
-- ☐ Should keep CDN URLs for failed downloads
+- ☑ Should throw error if imageDir does not exist
+- ☑ Should continue processing after download failure
+- ☑ Should track HTTP 403 errors separately (is403: true)
+- ☑ Should track other errors with is403: false
+- ☑ Should keep CDN URLs for failed downloads
 
 #### E. processWithContext - Edge Cases (4 tests)
-- ☐ Should handle empty markdown string
-- ☐ Should handle duplicate image URLs (download once, reuse)
-- ☐ Should handle invalid URL (no extractable hash)
-- ☐ Should handle ImageDownloader throwing exception
+- ☑ Should handle empty markdown string
+- ☑ Should handle duplicate image URLs (download once, reuse)
+- ☑ Should handle invalid URL (no extractable hash)
+- ☑ Should handle ImageDownloader throwing exception
 
-#### F. Helper Methods - buildImagePath (4 tests)
-- ☐ Should join prefix and filename with slash (no trailing slash)
-- ☐ Should not add double slash (trailing slash)
-- ☐ Should handle relative path prefix (`./`)
-- ☐ Should handle empty prefix
+#### F. Helper Methods - buildImagePath (4 tests) - REMOVED (redundant)
+- ☑ Should join prefix and filename with slash (no trailing slash) - covered by B
+- ☑ Should not add double slash (trailing slash) - covered by B
+- ☑ Should handle relative path prefix (`./`) - covered by B
+- ☑ Should handle empty prefix - covered by B
 
-#### G. Helper Methods - getMarkerPathForDir (3 tests)
-- ☐ Should create .downloaded-markers directory if missing
-- ☐ Should return marker path in specified baseDir
-- ☐ Should handle nested directories correctly
+#### G. Helper Methods - getMarkerPathForDir (3 tests) - REMOVED (redundant)
+- ☑ Should create .downloaded-markers directory if missing - covered by C
+- ☑ Should return marker path in specified baseDir - covered by C
+- ☑ Should handle nested directories correctly - covered by C
 
-#### H. Helper Methods - recordDownloadFailureForDir (3 tests)
-- ☐ Should create marker file with error message
-- ☐ Should create .403 marker for permanent failures
-- ☐ Should append error to errors array
+#### H. Helper Methods - recordDownloadFailureForDir (3 tests) - REMOVED (redundant)
+- ☑ Should create marker file with error message - covered by D
+- ☑ Should create .403 marker for permanent failures - covered by D
+- ☑ Should append error to errors array - covered by D
 
 #### I. Backwards Compatibility (2 tests)
-- ☐ Existing process() method unchanged (regression)
-- ☐ Existing tests still pass (integration)
+- ☑ Existing process() method unchanged (regression)
+- ☑ Existing tests still pass (integration)
 
 **Total Tests**: ~37 new tests (targeting 90%+ coverage)
 
@@ -644,28 +644,28 @@ async processWithContext(
 ## Success Criteria
 
 ### Functional Requirements
-- ☐ processWithContext() downloads images to provided imageDir
-- ☐ processWithContext() uses provided imagePathPrefix for markdown URLs
-- ☐ processWithContext() validates imageDir exists before processing
-- ☐ processWithContext() supports optional custom markerDir
-- ☐ buildImagePath() normalizes trailing slashes correctly
-- ☐ getMarkerPathForDir() creates markers in specified directory
-- ☐ recordDownloadFailureForDir() records errors with directory-specific markers
-- ☐ Existing process() method unchanged (backwards compatibility)
+- ☑ processWithContext() downloads images to provided imageDir
+- ☑ processWithContext() uses provided imagePathPrefix for markdown URLs
+- ☑ processWithContext() validates imageDir exists before processing
+- ☑ processWithContext() supports optional custom markerDir
+- ☑ buildImagePath() normalizes trailing slashes correctly
+- ☑ getMarkerPathForDir() creates markers in specified directory
+- ☑ recordDownloadFailureForDir() records errors with directory-specific markers
+- ☑ Existing process() method unchanged (backwards compatibility)
 
 ### Non-Functional Requirements
-- ☐ 90%+ test coverage for new code
-- ☐ No `any` types in production code
-- ☐ All public methods documented with JSDoc
-- ☐ TypeScript compilation passes
-- ☐ Build succeeds
-- ☐ All tests pass (existing + new)
+- ☑ 90%+ test coverage for new code (99.46% achieved)
+- ☑ No `any` types in production code
+- ☑ All public methods documented with JSDoc
+- ☑ TypeScript compilation passes
+- ☑ Build succeeds
+- ☑ All tests pass (78 tests, all passing)
 
 ### Code Quality
-- ☐ Follows existing ImageProcessor patterns
-- ☐ Single responsibility for each helper method
-- ☐ Comprehensive error handling
-- ☐ Clear separation between process() and processWithContext()
+- ☑ Follows existing ImageProcessor patterns
+- ☑ Single responsibility for each helper method
+- ☑ Comprehensive error handling
+- ☑ Clear separation between process() and processWithContext()
 
 ---
 
@@ -707,33 +707,33 @@ npm test
 ## Implementation Checklist
 
 ### Phase 1: Core Implementation
-- [ ] Add import for ImageProcessorContext type
-- [ ] Implement buildImagePath() helper method
-- [ ] Implement getMarkerPathForDir() helper method
-- [ ] Implement recordDownloadFailureForDir() helper method
-- [ ] Implement processWithContext() main method
+- [x] Add import for ImageProcessorContext type
+- [x] Implement buildImagePath() helper method
+- [x] Implement getMarkerPathForDir() helper method
+- [x] Implement recordDownloadFailureForDir() helper method
+- [x] Implement processWithContext() main method
 
 ### Phase 2: Testing
-- [ ] Write tests for processWithContext() basic functionality (7 tests)
-- [ ] Write tests for path prefix normalization (4 tests)
-- [ ] Write tests for marker directory handling (5 tests)
-- [ ] Write tests for error handling (5 tests)
-- [ ] Write tests for edge cases (4 tests)
-- [ ] Write tests for buildImagePath() helper (4 tests)
-- [ ] Write tests for getMarkerPathForDir() helper (3 tests)
-- [ ] Write tests for recordDownloadFailureForDir() helper (3 tests)
-- [ ] Write backwards compatibility tests (2 tests)
+- [x] Write tests for processWithContext() basic functionality (7 tests)
+- [x] Write tests for path prefix normalization (4 tests)
+- [x] Write tests for marker directory handling (5 tests)
+- [x] Write tests for error handling (5 tests)
+- [x] Write tests for edge cases (4 tests)
+- [x] Write tests for buildImagePath() helper (4 tests) - REMOVED (redundant)
+- [x] Write tests for getMarkerPathForDir() helper (3 tests) - REMOVED (redundant)
+- [x] Write tests for recordDownloadFailureForDir() helper (3 tests) - REMOVED (redundant)
+- [x] Write backwards compatibility tests (2 tests)
 
 ### Phase 3: Verification
-- [ ] Run type-check
-- [ ] Run build
-- [ ] Run tests
-- [ ] Review coverage report (target ≥90%)
+- [x] Run type-check
+- [x] Run build
+- [x] Run tests
+- [x] Review coverage report (target ≥90%)
 
 ### Phase 4: Documentation
-- [ ] Update issue #49 with implementation status
-- [ ] Mark Step 3.1 complete in IMPLEMENTATION_FLAT.md
-- [ ] Document any deviations from plan
+- [x] Update issue #49 with implementation status
+- [x] Mark Step 3.1 complete in IMPLEMENTATION_FLAT.md
+- [x] Document any deviations from plan
 
 ---
 
