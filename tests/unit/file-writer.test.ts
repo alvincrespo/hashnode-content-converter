@@ -317,28 +317,86 @@ describe('FileWriter', () => {
     });
   });
 
-  describe('postExists()', () => {
-    it('should return true if post directory exists', () => {
-      vi.mocked(fs.existsSync).mockReturnValue(true);
+  describe('Post Existence Check', () => {
+    describe('nested mode (default)', () => {
+      it('should return true if post directory exists', () => {
+        vi.mocked(fs.existsSync).mockReturnValue(true);
 
-      const result = fileWriter.postExists('./blog', 'existing-post');
+        const result = fileWriter.postExists('./blog', 'existing-post');
 
-      expect(result).toBe(true);
-      expect(fs.existsSync).toHaveBeenCalledWith(expect.stringContaining('existing-post'));
+        expect(result).toBe(true);
+        expect(fs.existsSync).toHaveBeenCalledWith(expect.stringContaining('existing-post'));
+      });
+
+      it('should return false if post directory does not exist', () => {
+        vi.mocked(fs.existsSync).mockReturnValue(false);
+
+        const result = fileWriter.postExists('./blog', 'non-existent-post');
+
+        expect(result).toBe(false);
+      });
+
+      it('should return false on invalid slug (sanitization fails)', () => {
+        const result = fileWriter.postExists('./blog', '/invalid/slug');
+
+        expect(result).toBe(false);
+      });
+
+      it('should check for directory, not file, in nested mode', () => {
+        vi.mocked(fs.existsSync).mockReturnValue(true);
+
+        fileWriter.postExists('./blog', 'my-post');
+
+        // Should NOT have .md extension in nested mode
+        const calledPath = vi.mocked(fs.existsSync).mock.calls[0][0] as string;
+        expect(calledPath).not.toContain('.md');
+        expect(calledPath).toContain('my-post');
+      });
     });
 
-    it('should return false if post directory does not exist', () => {
-      vi.mocked(fs.existsSync).mockReturnValue(false);
+    describe('flat mode', () => {
+      let flatWriter: FileWriter;
 
-      const result = fileWriter.postExists('./blog', 'non-existent-post');
+      beforeEach(() => {
+        flatWriter = new FileWriter({ outputMode: 'flat' });
+      });
 
-      expect(result).toBe(false);
-    });
+      it('should return true when {slug}.md file exists', () => {
+        vi.mocked(fs.existsSync).mockReturnValue(true);
 
-    it('should return false on invalid slug (sanitization fails)', () => {
-      const result = fileWriter.postExists('./blog', '/invalid/slug');
+        const result = flatWriter.postExists('./blog', 'test-post');
 
-      expect(result).toBe(false);
+        expect(result).toBe(true);
+        expect(fs.existsSync).toHaveBeenCalledWith(
+          expect.stringMatching(/test-post\.md$/)
+        );
+      });
+
+      it('should return false when {slug}.md file does not exist', () => {
+        vi.mocked(fs.existsSync).mockReturnValue(false);
+
+        const result = flatWriter.postExists('./blog', 'non-existent');
+
+        expect(result).toBe(false);
+      });
+
+      it('should check for {slug}.md file, not directory', () => {
+        vi.mocked(fs.existsSync).mockReturnValue(false);
+
+        flatWriter.postExists('./blog', 'my-post');
+
+        // Verify it checks for .md file
+        expect(fs.existsSync).toHaveBeenCalledWith(
+          expect.stringContaining('my-post.md')
+        );
+      });
+
+      it('should return false on invalid slug (graceful error handling)', () => {
+        // Invalid slug triggers sanitization error
+        const result = flatWriter.postExists('./blog', '/invalid/slug');
+
+        expect(result).toBe(false);
+      });
     });
   });
 
