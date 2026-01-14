@@ -1,7 +1,7 @@
 # Phase 2.2: Update FileWriter postExists Method - Implementation Plan
 
 **Issue**: [#46 - 2.2 Update FileWriter postExists Method](https://github.com/alvincrespo/hashnode-content-converter/issues/46)
-**Status**: PLANNED
+**Status**: IMPLEMENTED
 **Date**: 2026-01-13
 **Phase**: Phase 2 - FileWriter Service Updates
 
@@ -148,7 +148,7 @@ postExists(outputDir: string, slug: string): boolean {
 
 ### 1. Unit Test Approach
 
-**File**: [tests/unit/services/file-writer.test.ts](../../../tests/unit/services/file-writer.test.ts)
+**File**: [tests/unit/file-writer.test.ts](../../../tests/unit/file-writer.test.ts)
 
 **Test Categories**:
 
@@ -356,7 +356,7 @@ npm run test:coverage
 | File | Changes |
 |------|---------|
 | [src/services/file-writer.ts](../../../src/services/file-writer.ts) | Update postExists() method (lines 200-209) |
-| [tests/unit/services/file-writer.test.ts](../../../tests/unit/services/file-writer.test.ts) | Add ~6 new tests |
+| [tests/unit/file-writer.test.ts](../../../tests/unit/file-writer.test.ts) | Add ~6 new tests |
 
 ---
 
