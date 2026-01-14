@@ -150,14 +150,11 @@ export class FileWriter {
 
   /**
    * Ensure a directory exists, creating it if necessary.
+   * Uses mkdir with recursive:true which is idempotent (safe if directory exists).
    * @param dirPath - Directory path to ensure exists
    * @throws FileWriteError if directory creation fails
    */
   private async ensureDirectory(dirPath: string): Promise<void> {
-    if (fs.existsSync(dirPath)) {
-      return;
-    }
-
     try {
       await fs.promises.mkdir(dirPath, { recursive: true });
     } catch (error) {

@@ -549,20 +549,7 @@ describe('FileWriter', () => {
         expect(fs.promises.mkdir).toHaveBeenCalledWith('./blog', { recursive: true });
       });
 
-      it('should not call mkdir when output directory already exists', async () => {
-        // First call for directory check returns true (exists)
-        // Second call for file existence check returns false (file doesn't exist)
-        vi.mocked(fs.existsSync)
-          .mockReturnValueOnce(true)  // outputDir exists
-          .mockReturnValueOnce(false); // file doesn't exist
-
-        await flatWriter.writePost('./blog', 'my-post', '---\n', 'content');
-
-        expect(fs.promises.mkdir).not.toHaveBeenCalled();
-      });
-
       it('should throw FileWriteError on mkdir failure', async () => {
-        vi.mocked(fs.existsSync).mockReturnValue(false);
         vi.mocked(fs.promises.mkdir).mockRejectedValue(new Error('EACCES: permission denied'));
 
         await expect(
@@ -580,10 +567,7 @@ describe('FileWriter', () => {
 
     describe('overwrite behavior', () => {
       it('should throw error if {slug}.md exists and overwrite is false', async () => {
-        // outputDir exists, file exists
-        vi.mocked(fs.existsSync)
-          .mockReturnValueOnce(true)  // outputDir exists (skip mkdir)
-          .mockReturnValueOnce(true); // file exists (trigger overwrite error)
+        vi.mocked(fs.existsSync).mockReturnValue(true); // file exists
 
         await expect(
           flatWriter.writePost('./blog', 'existing-post', '---\n', 'content')
@@ -591,9 +575,7 @@ describe('FileWriter', () => {
       });
 
       it('should throw FileWriteError when file exists in flat mode', async () => {
-        vi.mocked(fs.existsSync)
-          .mockReturnValueOnce(true)  // outputDir exists
-          .mockReturnValueOnce(true); // file exists
+        vi.mocked(fs.existsSync).mockReturnValue(true); // file exists
 
         await expect(
           flatWriter.writePost('./blog', 'existing-post', '---\n', 'content')
@@ -602,9 +584,7 @@ describe('FileWriter', () => {
 
       it('should overwrite {slug}.md when overwrite is true', async () => {
         const overwriteFlatWriter = new FileWriter({ outputMode: 'flat', overwrite: true });
-        vi.mocked(fs.existsSync)
-          .mockReturnValueOnce(true)  // outputDir exists
-          .mockReturnValueOnce(true); // file exists
+        vi.mocked(fs.existsSync).mockReturnValue(true); // file exists
 
         await expect(
           overwriteFlatWriter.writePost('./blog', 'existing-post', '---\n', 'new content')
@@ -616,6 +596,7 @@ describe('FileWriter', () => {
 
     describe('atomic writes', () => {
       it('should use atomic writes for flat mode files', async () => {
+        vi.mocked(fs.existsSync).mockReturnValue(false); // file doesn't exist
         await flatWriter.writePost('./blog', 'atomic-post', '---\n', 'content');
 
         // Should write to .tmp file first
@@ -634,6 +615,7 @@ describe('FileWriter', () => {
 
       it('should use direct writes when atomicWrites is false in flat mode', async () => {
         const directFlatWriter = new FileWriter({ outputMode: 'flat', atomicWrites: false });
+        vi.mocked(fs.existsSync).mockReturnValue(false); // file doesn't exist
 
         await directFlatWriter.writePost('./blog', 'direct-post', '---\n', 'content');
 
@@ -737,11 +719,7 @@ describe('FileWriter', () => {
           outputMode: 'nested',
         });
 
-        // First call: directory check (not exists)
-        // Second call: file exists check (exists)
-        vi.mocked(fs.existsSync)
-          .mockReturnValueOnce(false)
-          .mockReturnValueOnce(true);
+        vi.mocked(fs.existsSync).mockReturnValue(true); // file exists
 
         await expect(writer.write(post, './blog')).rejects.toThrow(
           'already exists and overwrite is disabled'
@@ -757,9 +735,7 @@ describe('FileWriter', () => {
           outputMode: 'nested',
         });
 
-        vi.mocked(fs.existsSync)
-          .mockReturnValueOnce(true)  // directory exists
-          .mockReturnValueOnce(true); // file exists
+        vi.mocked(fs.existsSync).mockReturnValue(true); // file exists
 
         await expect(writer.write(post, './blog')).resolves.toBeDefined();
         expect(fs.promises.writeFile).toHaveBeenCalled();
@@ -767,34 +743,6 @@ describe('FileWriter', () => {
     });
 
     describe('directory creation', () => {
-      it('should skip mkdir if directory already exists', async () => {
-        const writer = new FileWriter();
-        const post = new Post({
-          slug: 'my-post',
-          frontmatter: '---\n---',
-          content: '',
-          outputMode: 'nested',
-        });
-
-        // Map of paths to existence status
-        const pathExists = new Map<string, boolean>([
-          ['blog/my-post', true],        // directory exists
-          ['blog/my-post/index.md', false], // file doesn't exist
-        ]);
-
-        vi.mocked(fs.existsSync).mockImplementation((p: fs.PathLike) => {
-          const pathStr = p.toString();
-          for (const [key, value] of pathExists) {
-            if (pathStr.endsWith(key)) return value;
-          }
-          return false;
-        });
-
-        await writer.write(post, './blog');
-
-        expect(fs.promises.mkdir).not.toHaveBeenCalled();
-      });
-
       it('should throw FileWriteError on mkdir failure', async () => {
         const writer = new FileWriter();
         const post = new Post({
