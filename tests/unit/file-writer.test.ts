@@ -776,17 +776,19 @@ describe('FileWriter', () => {
           outputMode: 'nested',
         });
 
-        // ensureDirectory checks if dir exists (true = skip mkdir)
-        // write() checks if file exists for overwrite (false = don't throw)
-        vi.mocked(fs.existsSync)
-          .mockImplementation((p: fs.PathLike) => {
-            const pathStr = p.toString();
-            // Directory exists, file doesn't
-            if (pathStr.includes('index.md')) {
-              return false;
-            }
-            return true; // directory exists
-          });
+        // Map of paths to existence status
+        const pathExists = new Map<string, boolean>([
+          ['blog/my-post', true],        // directory exists
+          ['blog/my-post/index.md', false], // file doesn't exist
+        ]);
+
+        vi.mocked(fs.existsSync).mockImplementation((p: fs.PathLike) => {
+          const pathStr = p.toString();
+          for (const [key, value] of pathExists) {
+            if (pathStr.endsWith(key)) return value;
+          }
+          return false;
+        });
 
         await writer.write(post, './blog');
 
