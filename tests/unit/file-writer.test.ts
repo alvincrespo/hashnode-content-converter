@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { FileWriter, FileWriteError } from '../../src/services/file-writer.js';
-import { Post } from '../../src/models/post.js';
+import { Post, PostValidationError } from '../../src/models/post.js';
 
 // Mock fs and path modules
 vi.mock('node:fs');
@@ -43,7 +43,7 @@ describe('FileWriter', () => {
       it('should reject parent directory traversal', async () => {
         await expect(
           fileWriter.writePost('./blog', '../etc/passwd', '---\n', 'content')
-        ).rejects.toThrow(FileWriteError);
+        ).rejects.toThrow(PostValidationError);
 
         await expect(
           fileWriter.writePost('./blog', '../etc/passwd', '---\n', 'content')
@@ -53,7 +53,7 @@ describe('FileWriter', () => {
       it('should reject absolute paths', async () => {
         await expect(
           fileWriter.writePost('./blog', '/etc/passwd', '---\n', 'content')
-        ).rejects.toThrow(FileWriteError);
+        ).rejects.toThrow(PostValidationError);
 
         await expect(
           fileWriter.writePost('./blog', '/etc/passwd', '---\n', 'content')
@@ -75,7 +75,7 @@ describe('FileWriter', () => {
         // Slug with only whitespace becomes empty after trim
         await expect(
           fileWriter.writePost('./blog', '   ', '---\n', 'content')
-        ).rejects.toThrow(FileWriteError);
+        ).rejects.toThrow(PostValidationError);
 
         await expect(
           fileWriter.writePost('./blog', '   ', '---\n', 'content')

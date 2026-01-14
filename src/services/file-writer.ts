@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { Post, PostValidationError } from '../models/post.js';
+import { Post } from '../models/post.js';
 
 /**
  * Configuration options for FileWriter service
@@ -298,24 +298,16 @@ export class FileWriter {
    * @param frontmatter - YAML frontmatter string (includes --- markers)
    * @param content - Markdown content body
    * @returns Absolute path to the written file
+   * @throws PostValidationError if slug is invalid (absolute path, traversal, empty)
    * @throws FileWriteError if write fails or file exists (when overwrite=false)
    */
   async writePost(outputDir: string, slug: string, frontmatter: string, content: string): Promise<string> {
-    // Wrap PostValidationError in FileWriteError for backwards compatibility
-    let post: Post;
-    try {
-      post = new Post({
-        slug,
-        frontmatter,
-        content,
-        outputMode: this.config.outputMode,
-      });
-    } catch (error) {
-      if (error instanceof PostValidationError) {
-        throw new FileWriteError(error.message, error.slug, 'validate_path', error);
-      }
-      throw error;
-    }
+    const post = new Post({
+      slug,
+      frontmatter,
+      content,
+      outputMode: this.config.outputMode,
+    });
     return this.write(post, outputDir);
   }
 }
