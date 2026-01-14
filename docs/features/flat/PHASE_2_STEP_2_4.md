@@ -213,8 +213,8 @@ npm run test:coverage -- tests/unit/file-writer.test.ts
 # 4. Run full test suite (verify no regressions)
 npm test
 
-# Expected: All 363 tests pass
-# Expected: Overall coverage remains ≥99.36%
+# Expected: All 410 tests pass
+# Expected: Overall coverage remains ≥99.38%
 
 # 5. Type-check (ensure no type errors)
 npm run type-check
@@ -223,11 +223,11 @@ npm run type-check
 ```
 
 ### Post-Verification
-- [ ] All tests pass (32/32 test suites)
-- [ ] Coverage ≥97% for FileWriter service
-- [ ] No regressions in nested mode tests
-- [ ] TypeScript compilation succeeds
-- [ ] Overall project coverage maintained at 99.36%+
+- [x] All tests pass (61/61 FileWriter tests, 410/410 total)
+- [x] Coverage ≥97% for FileWriter service (97.56% achieved)
+- [x] No regressions in nested mode tests
+- [x] TypeScript compilation succeeds
+- [x] Overall project coverage maintained at 99.38%
 
 ---
 
