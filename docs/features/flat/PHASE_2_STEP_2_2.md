@@ -285,17 +285,17 @@ describe('postExists() - Nested Mode Regression', () => {
 ## Success Criteria
 
 ### Functional Requirements
-- [ ] postExists() returns true for existing `{slug}.md` files in flat mode
-- [ ] postExists() returns false for non-existent files in flat mode
-- [ ] postExists() nested mode behavior unchanged (regression tests pass)
-- [ ] Graceful error handling maintained (return false on errors)
+- [x] postExists() returns true for existing `{slug}.md` files in flat mode
+- [x] postExists() returns false for non-existent files in flat mode
+- [x] postExists() nested mode behavior unchanged (regression tests pass)
+- [x] Graceful error handling maintained (return false on errors)
 
 ### Non-Functional Requirements
-- [ ] 100% test coverage on new code paths
-- [ ] No `any` types
-- [ ] JSDoc updated with flat mode documentation
-- [ ] TypeScript compilation passes
-- [ ] All existing tests pass
+- [x] 100% test coverage on new code paths
+- [x] No `any` types
+- [x] JSDoc updated with flat mode documentation
+- [x] TypeScript compilation passes
+- [x] All existing tests pass
 
 ---
 
@@ -332,22 +332,22 @@ npm run test:coverage
 ## Implementation Checklist
 
 ### Phase 1: Core Implementation
-- [ ] Update JSDoc for postExists() method
-- [ ] Add flat mode conditional check
-- [ ] Build file path with `.md` extension for flat mode
-- [ ] Keep nested mode logic unchanged
+- [x] Update JSDoc for postExists() method
+- [x] Add flat mode conditional check
+- [x] Build file path with `.md` extension for flat mode
+- [x] Keep nested mode logic unchanged
 
 ### Phase 2: Testing
-- [ ] Add "postExists() - Flat Mode" describe block
-- [ ] Write 4 flat mode tests
-- [ ] Add 2 nested mode regression tests
-- [ ] Verify coverage targets met
+- [x] Add "postExists() - Flat Mode" describe block
+- [x] Write 4 flat mode tests
+- [x] Add 2 nested mode regression tests
+- [x] Verify coverage targets met
 
 ### Phase 3: Verification
-- [ ] Run type-check
-- [ ] Run build
-- [ ] Run all tests
-- [ ] Review coverage report
+- [x] Run type-check
+- [x] Run build
+- [x] Run all tests
+- [x] Review coverage report
 
 ---
 

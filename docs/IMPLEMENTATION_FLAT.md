@@ -346,9 +346,9 @@ constructor(config?: FileWriterConfig) {
 ```
 
 #### Step 2.2: Update postExists Method
-- [ ] Check for `{slug}.md` file in flat mode
-- [ ] Check for `{slug}/` directory in nested mode (current behavior)
-- [ ] Add unit tests for flat mode existence check
+- [x] Check for `{slug}.md` file in flat mode
+- [x] Check for `{slug}/` directory in nested mode (current behavior)
+- [x] Add unit tests for flat mode existence check
 
 **Proposed Changes to `postExists` method (lines 183-192):**
 
