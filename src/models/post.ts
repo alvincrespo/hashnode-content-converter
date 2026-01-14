@@ -120,31 +120,16 @@ export class Post {
 
   /**
    * Sanitize a slug for filesystem safety.
-   * - Rejects absolute paths
-   * - Rejects parent directory traversal
-   * - Replaces invalid characters with hyphens
    * @throws PostValidationError if slug is invalid
    */
   private sanitizeSlug(slug: string): string {
-    let sanitized = slug.trim();
+    const trimmed = slug.trim();
 
-    if (sanitized.startsWith('/')) {
-      throw new PostValidationError(
-        `Invalid slug: absolute paths are not allowed (${slug})`,
-        slug
-      );
-    }
-
-    if (sanitized.includes('..')) {
-      throw new PostValidationError(
-        `Invalid slug: parent directory traversal is not allowed (${slug})`,
-        slug
-      );
-    }
+    this.rejectAbsolutePath(trimmed, slug);
+    this.rejectDirectoryTraversal(trimmed, slug);
 
     // Replace invalid filename characters with hyphens
-    // Invalid chars: / \ : * ? " < > |
-    sanitized = sanitized.replace(/[/\\:*?"<>|]/g, '-');
+    const sanitized = trimmed.replace(/[/\\:*?"<>|]/g, '-');
 
     if (sanitized.length === 0) {
       throw new PostValidationError(
@@ -154,5 +139,31 @@ export class Post {
     }
 
     return sanitized;
+  }
+
+  /**
+   * Reject slugs that are absolute paths.
+   * @throws PostValidationError if slug starts with '/'
+   */
+  private rejectAbsolutePath(sanitized: string, original: string): void {
+    if (sanitized.startsWith('/')) {
+      throw new PostValidationError(
+        `Invalid slug: absolute paths are not allowed (${original})`,
+        original
+      );
+    }
+  }
+
+  /**
+   * Reject slugs containing parent directory traversal.
+   * @throws PostValidationError if slug contains '..'
+   */
+  private rejectDirectoryTraversal(sanitized: string, original: string): void {
+    if (sanitized.includes('..')) {
+      throw new PostValidationError(
+        `Invalid slug: parent directory traversal is not allowed (${original})`,
+        original
+      );
+    }
   }
 }
