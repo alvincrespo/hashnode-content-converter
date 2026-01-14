@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { Post } from '../models/post.js';
+import { Post, PostValidationError } from '../models/post.js';
 
 /**
  * Configuration options for FileWriter service
@@ -232,9 +232,13 @@ export class FileWriter {
         outputMode: this.config.outputMode,
       });
       return fs.existsSync(post.getExistencePath(outputDir));
-    } catch {
-      // If slug validation fails, the post doesn't exist
-      return false;
+    } catch (error) {
+      // Invalid slugs mean the post doesn't exist
+      if (error instanceof PostValidationError) {
+        return false;
+      }
+      // Re-throw unexpected errors (e.g., filesystem issues)
+      throw error;
     }
   }
 

@@ -331,6 +331,15 @@ describe('FileWriter', () => {
         expect(result).toBe(false);
       });
 
+      it('should re-throw unexpected errors (non-PostValidationError)', () => {
+        const unexpectedError = new Error('Unexpected filesystem error');
+        vi.mocked(fs.existsSync).mockImplementation(() => {
+          throw unexpectedError;
+        });
+
+        expect(() => fileWriter.postExists('./blog', 'valid-slug')).toThrow(unexpectedError);
+      });
+
       it('should check for directory, not file, in nested mode', () => {
         vi.mocked(fs.existsSync).mockReturnValue(true);
 
