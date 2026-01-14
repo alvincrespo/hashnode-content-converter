@@ -311,9 +311,9 @@ export interface ImageProcessorContext {
 ### Phase 2: FileWriter Service Updates
 
 #### Step 2.1: Add outputMode Configuration
-- [ ] Add `outputMode` to `FileWriterConfig` interface
-- [ ] Store output mode in class property
-- [ ] Update constructor to accept new config
+- [x] Add `outputMode` to `FileWriterConfig` interface
+- [x] Store output mode in class property
+- [x] Update constructor to accept new config
 
 **Proposed Changes to `src/services/file-writer.ts`:**
 
