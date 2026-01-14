@@ -81,50 +81,6 @@ export class FileWriter {
   }
 
   /**
-   * Sanitize a slug to prevent path traversal and invalid characters
-   * @param slug - Raw slug from post metadata
-   * @returns Sanitized slug safe for filesystem use
-   * @throws FileWriteError if slug is invalid or becomes empty after sanitization
-   */
-  private sanitizeSlug(slug: string): string {
-    // Remove leading/trailing whitespace
-    let sanitized = slug.trim();
-
-    // Reject absolute paths
-    if (sanitized.startsWith('/')) {
-      throw new FileWriteError(
-        `Invalid slug: absolute paths are not allowed (${slug})`,
-        slug,
-        'validate_path'
-      );
-    }
-
-    // Reject parent directory traversal
-    if (sanitized.includes('..')) {
-      throw new FileWriteError(
-        `Invalid slug: parent directory traversal is not allowed (${slug})`,
-        slug,
-        'validate_path'
-      );
-    }
-
-    // Replace invalid filename characters with hyphens
-    // Invalid chars: / \ : * ? " < > |
-    sanitized = sanitized.replace(/[/\\:*?"<>|]/g, '-');
-
-    // Ensure result is not empty after sanitization
-    if (sanitized.length === 0) {
-      throw new FileWriteError(
-        `Invalid slug: slug is empty after sanitization (original: ${slug})`,
-        slug,
-        'validate_path'
-      );
-    }
-
-    return sanitized;
-  }
-
-  /**
    * Write content to a file atomically using temp file and rename
    * Prevents partial writes if operation fails midway
    * @param filePath - Target file path
@@ -272,17 +228,15 @@ export class FileWriter {
    */
   postExists(outputDir: string, slug: string): boolean {
     try {
-      let sanitized = this.sanitizeSlug(slug);
-
-      // Flat mode: check for {slug}.md file
-      if (this.config.outputMode === 'flat') {
-        sanitized = `${sanitized}.md`;
-      }
-
-      const postPath = path.join(outputDir, sanitized);
-      return fs.existsSync(postPath);
+      const post = new Post({
+        slug,
+        frontmatter: '',
+        content: '',
+        outputMode: this.config.outputMode,
+      });
+      return fs.existsSync(post.getExistencePath(outputDir));
     } catch {
-      // If sanitization fails, the post doesn't exist (invalid slug)
+      // If slug validation fails, the post doesn't exist
       return false;
     }
   }
