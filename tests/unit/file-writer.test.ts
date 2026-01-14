@@ -512,4 +512,150 @@ describe('FileWriter', () => {
       expect(result).toContain('my-post/index.md');
     });
   });
+
+  describe('writePost - flat mode', () => {
+    let flatWriter: FileWriter;
+
+    beforeEach(() => {
+      vi.clearAllMocks();
+      flatWriter = new FileWriter({ outputMode: 'flat' });
+      vi.mocked(fs.existsSync).mockReturnValue(false);
+      vi.mocked(fs.promises.mkdir).mockResolvedValue(undefined);
+      vi.mocked(fs.promises.writeFile).mockResolvedValue(undefined);
+      vi.mocked(fs.promises.rename).mockResolvedValue(undefined);
+    });
+
+    describe('file path behavior', () => {
+      it('should write {slug}.md directly in output directory', async () => {
+        const result = await flatWriter.writePost('./blog', 'my-post', '---\n', 'content');
+
+        expect(result).toContain('my-post.md');
+        expect(result).not.toContain('my-post/index.md');
+      });
+
+      it('should NOT create subdirectory in flat mode', async () => {
+        await flatWriter.writePost('./blog', 'my-post', '---\n', 'content');
+
+        // mkdir should NOT be called with post subdirectory path
+        const mkdirCalls = vi.mocked(fs.promises.mkdir).mock.calls;
+        for (const call of mkdirCalls) {
+          expect(call[0]).not.toContain('my-post');
+        }
+      });
+
+      it('should return absolute path ending with {slug}.md', async () => {
+        const result = await flatWriter.writePost('./blog', 'test-post', '---\n', 'content');
+
+        expect(result).toMatch(/test-post\.md$/);
+        expect(result).toMatch(/^\/.*test-post\.md$/);
+      });
+    });
+
+    describe('directory creation', () => {
+      it('should create output directory if it does not exist', async () => {
+        vi.mocked(fs.existsSync).mockReturnValue(false);
+
+        await flatWriter.writePost('./blog', 'my-post', '---\n', 'content');
+
+        expect(fs.promises.mkdir).toHaveBeenCalledWith('./blog', { recursive: true });
+      });
+
+      it('should not call mkdir when output directory already exists', async () => {
+        // First call for directory check returns true (exists)
+        // Second call for file existence check returns false (file doesn't exist)
+        vi.mocked(fs.existsSync)
+          .mockReturnValueOnce(true)  // outputDir exists
+          .mockReturnValueOnce(false); // file doesn't exist
+
+        await flatWriter.writePost('./blog', 'my-post', '---\n', 'content');
+
+        expect(fs.promises.mkdir).not.toHaveBeenCalled();
+      });
+
+      it('should throw FileWriteError on mkdir failure', async () => {
+        vi.mocked(fs.existsSync).mockReturnValue(false);
+        vi.mocked(fs.promises.mkdir).mockRejectedValue(new Error('EACCES: permission denied'));
+
+        await expect(
+          flatWriter.writePost('./blog', 'my-post', '---\n', 'content')
+        ).rejects.toThrow(FileWriteError);
+
+        await expect(
+          flatWriter.writePost('./blog', 'my-post', '---\n', 'content')
+        ).rejects.toMatchObject({
+          operation: 'create_dir',
+          path: './blog'
+        });
+      });
+    });
+
+    describe('overwrite behavior', () => {
+      it('should throw error if {slug}.md exists and overwrite is false', async () => {
+        // outputDir exists, file exists
+        vi.mocked(fs.existsSync)
+          .mockReturnValueOnce(true)  // outputDir exists (skip mkdir)
+          .mockReturnValueOnce(true); // file exists (trigger overwrite error)
+
+        await expect(
+          flatWriter.writePost('./blog', 'existing-post', '---\n', 'content')
+        ).rejects.toThrow('already exists and overwrite is disabled');
+      });
+
+      it('should throw FileWriteError when file exists in flat mode', async () => {
+        vi.mocked(fs.existsSync)
+          .mockReturnValueOnce(true)  // outputDir exists
+          .mockReturnValueOnce(true); // file exists
+
+        await expect(
+          flatWriter.writePost('./blog', 'existing-post', '---\n', 'content')
+        ).rejects.toThrow(FileWriteError);
+      });
+
+      it('should overwrite {slug}.md when overwrite is true', async () => {
+        const overwriteFlatWriter = new FileWriter({ outputMode: 'flat', overwrite: true });
+        vi.mocked(fs.existsSync)
+          .mockReturnValueOnce(true)  // outputDir exists
+          .mockReturnValueOnce(true); // file exists
+
+        await expect(
+          overwriteFlatWriter.writePost('./blog', 'existing-post', '---\n', 'new content')
+        ).resolves.toBeDefined();
+
+        expect(fs.promises.writeFile).toHaveBeenCalled();
+      });
+    });
+
+    describe('atomic writes', () => {
+      it('should use atomic writes for flat mode files', async () => {
+        await flatWriter.writePost('./blog', 'atomic-post', '---\n', 'content');
+
+        // Should write to .tmp file first
+        expect(fs.promises.writeFile).toHaveBeenCalledWith(
+          expect.stringContaining('atomic-post.md.tmp'),
+          expect.any(String),
+          'utf8'
+        );
+
+        // Should rename to final location
+        expect(fs.promises.rename).toHaveBeenCalledWith(
+          expect.stringContaining('atomic-post.md.tmp'),
+          expect.stringContaining('atomic-post.md')
+        );
+      });
+
+      it('should use direct writes when atomicWrites is false in flat mode', async () => {
+        const directFlatWriter = new FileWriter({ outputMode: 'flat', atomicWrites: false });
+
+        await directFlatWriter.writePost('./blog', 'direct-post', '---\n', 'content');
+
+        // Should NOT use rename (direct write)
+        expect(fs.promises.rename).not.toHaveBeenCalled();
+        expect(fs.promises.writeFile).toHaveBeenCalledWith(
+          expect.stringContaining('direct-post.md'),
+          expect.any(String),
+          'utf8'
+        );
+      });
+    });
+  });
 });

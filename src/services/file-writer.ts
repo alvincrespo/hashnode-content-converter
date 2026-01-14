@@ -219,7 +219,7 @@ export class FileWriter {
   /**
    * Write a blog post with frontmatter and content to the filesystem
    * @param outputDir - Base output directory (e.g., './blog')
-   * @param slug - Post slug (used as subdirectory name)
+   * @param slug - Post slug (used as filename in flat mode, subdirectory in nested mode)
    * @param frontmatter - YAML frontmatter string (includes --- markers)
    * @param content - Markdown content body
    * @returns Absolute path to the written file
@@ -228,10 +228,42 @@ export class FileWriter {
   async writePost(outputDir: string, slug: string, frontmatter: string, content: string): Promise<string> {
     // Sanitize slug for filesystem safety
     const sanitized = this.sanitizeSlug(slug);
+    let filePath: string;
 
-    // Construct paths
-    const postDir = path.join(outputDir, sanitized);
-    const filePath = path.join(postDir, 'index.md');
+    if (this.config.outputMode === 'flat') {
+      // Flat mode: write {output}/{slug}.md directly
+      filePath = path.join(outputDir, `${sanitized}.md`);
+
+      // Ensure output directory exists (but don't create post subdirectory)
+      if (!fs.existsSync(outputDir)) {
+        try {
+          await fs.promises.mkdir(outputDir, { recursive: true });
+        } catch (error) {
+          throw new FileWriteError(
+            `Failed to create directory: ${error instanceof Error ? error.message : String(error)}`,
+            outputDir,
+            'create_dir',
+            error instanceof Error ? error : undefined
+          );
+        }
+      }
+    } else {
+      // Nested mode: write {output}/{slug}/index.md
+      const postDir = path.join(outputDir, sanitized);
+      filePath = path.join(postDir, 'index.md');
+
+      // Create post directory (recursive)
+      try {
+        await fs.promises.mkdir(postDir, { recursive: true });
+      } catch (error) {
+        throw new FileWriteError(
+          `Failed to create directory: ${error instanceof Error ? error.message : String(error)}`,
+          postDir,
+          'create_dir',
+          error instanceof Error ? error : undefined
+        );
+      }
+    }
 
     // Check if file exists and handle overwrite behavior
     if (!this.config.overwrite && fs.existsSync(filePath)) {
@@ -239,18 +271,6 @@ export class FileWriter {
         `File already exists and overwrite is disabled: ${filePath}`,
         filePath,
         'write_file'
-      );
-    }
-
-    // Create post directory (recursive)
-    try {
-      await fs.promises.mkdir(postDir, { recursive: true });
-    } catch (error) {
-      throw new FileWriteError(
-        `Failed to create directory: ${error instanceof Error ? error.message : String(error)}`,
-        postDir,
-        'create_dir',
-        error instanceof Error ? error : undefined
       );
     }
 
