@@ -5,6 +5,7 @@ import type {
   ImageProcessorOptions,
   ImageProcessingResult,
   ImageProcessingError,
+  ImageProcessorContext,
 } from '../types/image-processor.js';
 
 /**
@@ -203,6 +204,347 @@ export class ImageProcessor {
       imagesSkipped,
       errors,
     };
+  }
+
+  /**
+   * Build image path from prefix and filename.
+   * Handles trailing slash normalization to avoid double slashes.
+   *
+   * @param prefix - Path prefix (e.g., '/images', '/assets/', '.')
+   * @param filename - Image filename (e.g., 'uuid.png')
+   * @returns Normalized path (e.g., '/images/uuid.png')
+   *
+   * @example
+   * ```typescript
+   * buildImagePath('/images', 'test.png')   // '/images/test.png'
+   * buildImagePath('/images/', 'test.png')  // '/images/test.png'
+   * buildImagePath('.', 'test.png')         // './test.png'
+   * ```
+   */
+  private buildImagePath(prefix: string, filename: string): string {
+    if (prefix.endsWith('/')) {
+      return `${prefix}${filename}`;
+    }
+    return `${prefix}/${filename}`;
+  }
+
+  /**
+   * Get marker path for a specific directory.
+   * Creates the markers directory if it doesn't exist.
+   *
+   * This method differs from getMarkerPath() by accepting baseDir
+   * parameter instead of using class instance blogDir, enabling
+   * marker files in arbitrary directories (shared image folders).
+   *
+   * @param baseDir - Base directory for marker storage
+   * @param filename - Image filename (e.g., 'uuid.png')
+   * @returns Path to marker file (e.g., '/images/.downloaded-markers/uuid.png.marker')
+   */
+  private getMarkerPathForDir(baseDir: string, filename: string): string {
+    const markersDir = path.join(baseDir, '.downloaded-markers');
+
+    // Ensure markers directory exists
+    if (!fs.existsSync(markersDir)) {
+      fs.mkdirSync(markersDir, { recursive: true });
+    }
+
+    return path.join(markersDir, `${filename}.marker`);
+  }
+
+  /**
+   * Record download failure with marker in specified directory.
+   *
+   * This method differs from recordDownloadFailure() by accepting baseDir
+   * parameter, enabling error markers in arbitrary directories.
+   *
+   * Marker paths:
+   * - Permanent (403): `{filename}.marker.403` - won't retry on re-run
+   * - Transient: `{filename}.marker` with error message - will retry on re-run
+   *
+   * @param filename - Image filename (e.g., 'uuid.png')
+   * @param url - Original CDN URL that failed
+   * @param errorMessage - Error description to store in marker
+   * @param isPermanent403 - If true, creates .403 marker; if false, creates regular marker
+   * @param baseDir - Base directory for marker storage
+   * @param errors - Error collection array to append to
+   */
+  private recordDownloadFailureForDir(
+    filename: string,
+    url: string,
+    errorMessage: string,
+    isPermanent403: boolean,
+    baseDir: string,
+    errors: ImageProcessingError[]
+  ): void {
+    const markerPath = this.getMarkerPathForDir(baseDir, filename);
+    const filePath = isPermanent403 ? `${markerPath}.403` : markerPath;
+
+    fs.writeFileSync(filePath, errorMessage);
+    errors.push({
+      filename,
+      url,
+      error: errorMessage,
+      is403: isPermanent403,
+    });
+  }
+
+  /**
+   * Check image status based on existing markers.
+   * Determines if image should be skipped (success/403) or retried.
+   *
+   * @param filepath - Path to image file
+   * @param markerPath - Path to success marker
+   * @param marker403Path - Path to 403 marker
+   * @returns Status object with shouldSkip flag and reason
+   */
+  private checkImageStatus(
+    filepath: string,
+    markerPath: string,
+    marker403Path: string
+  ): { shouldSkip: boolean; reason: 'success' | '403' | 'retry' } {
+    // Check if download succeeded previously
+    if (fs.existsSync(filepath) && fs.existsSync(markerPath)) {
+      const stats = fs.statSync(markerPath);
+      if (stats.size === 0) {
+        // Empty marker = success
+        return { shouldSkip: true, reason: 'success' };
+      }
+      // Non-empty marker = transient failure, retry
+    }
+
+    // Check for permanent 403 failure
+    if (fs.existsSync(marker403Path)) {
+      return { shouldSkip: true, reason: '403' };
+    }
+
+    // No markers or transient failure marker - should retry
+    return { shouldSkip: false, reason: 'retry' };
+  }
+
+  /**
+   * Handle download result and create appropriate markers.
+   * Processes success, 403, and transient failure cases.
+   *
+   * @param result - Download result from ImageDownloader
+   * @param filename - Image filename
+   * @param url - Original CDN URL
+   * @param markerPath - Path to marker file
+   * @param effectiveMarkerDir - Directory for marker files
+   * @param errors - Error collection array
+   * @returns True if download succeeded, false otherwise
+   */
+  private handleDownloadResult(
+    result: { success: boolean; is403?: boolean; error?: string },
+    filename: string,
+    url: string,
+    markerPath: string,
+    effectiveMarkerDir: string,
+    errors: ImageProcessingError[]
+  ): boolean {
+    if (result.success) {
+      // Success: create empty marker file
+      fs.writeFileSync(markerPath, '');
+      return true;
+    } else if (result.is403) {
+      // HTTP 403: permanent failure, create 403 marker
+      this.recordDownloadFailureForDir(
+        filename,
+        url,
+        result.error || 'HTTP 403 Forbidden',
+        true,
+        effectiveMarkerDir,
+        errors
+      );
+    } else {
+      // Transient failure: create marker with error message
+      this.recordDownloadFailureForDir(
+        filename,
+        url,
+        result.error || 'Download failed',
+        false,
+        effectiveMarkerDir,
+        errors
+      );
+    }
+    return false;
+  }
+
+  /**
+   * Process a single image URL with context.
+   * Handles filename extraction, marker checking, downloading, and markdown replacement.
+   *
+   * @param url - CDN image URL to process
+   * @param imageDir - Directory for image storage
+   * @param imagePathPrefix - Path prefix for markdown references
+   * @param effectiveMarkerDir - Directory for marker files
+   * @param errors - Error collection array
+   * @returns Object with updated markdown fragment, downloaded count, and skipped count
+   */
+  private async processSingleImage(
+    url: string,
+    imageDir: string,
+    imagePathPrefix: string,
+    effectiveMarkerDir: string,
+    errors: ImageProcessingError[]
+  ): Promise<{ markdown: string; downloaded: number; skipped: number }> {
+    // Extract filename hash
+    const filename = ImageDownloader.extractHash(url);
+
+    if (!filename) {
+      errors.push({
+        filename: 'unknown',
+        url,
+        error: 'Could not extract hash from URL',
+        is403: false,
+      });
+      return { markdown: url, downloaded: 0, skipped: 0 };
+    }
+
+    const filepath = path.join(imageDir, filename);
+    const markerPath = this.getMarkerPathForDir(effectiveMarkerDir, filename);
+    const marker403Path = markerPath + '.403';
+    const localPath = this.buildImagePath(imagePathPrefix, filename);
+
+    // Check if should skip this image
+    const status = this.checkImageStatus(filepath, markerPath, marker403Path);
+
+    if (status.shouldSkip) {
+      if (status.reason === 'success') {
+        // Replace URL with local path
+        return { markdown: localPath, downloaded: 0, skipped: 1 };
+      }
+      // 403 - keep CDN URL
+      return { markdown: url, downloaded: 0, skipped: 1 };
+    }
+
+    // Attempt download
+    try {
+      const result = await this.downloader.download(url, filepath);
+      const downloadedSuccessfully = this.handleDownloadResult(
+        result,
+        filename,
+        url,
+        markerPath,
+        effectiveMarkerDir,
+        errors
+      );
+
+      if (downloadedSuccessfully) {
+        return { markdown: localPath, downloaded: 1, skipped: 0 };
+      }
+      // Download failed - keep CDN URL
+      return { markdown: url, downloaded: 0, skipped: 0 };
+    } catch (error) {
+      // Unexpected error during download
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      this.recordDownloadFailureForDir(filename, url, errorMsg, false, effectiveMarkerDir, errors);
+      return { markdown: url, downloaded: 0, skipped: 0 };
+    }
+  }
+
+  /**
+   * Process all images in markdown content.
+   * Extracts image URLs and processes each one with context.
+   *
+   * @param markdown - Markdown content with image URLs
+   * @param context - Image processing context with directory and path prefix
+   * @param effectiveMarkerDir - Directory for marker files (computed from context)
+   * @returns Processing result with updated markdown and statistics
+   */
+  private async processImages(
+    markdown: string,
+    context: ImageProcessorContext,
+    effectiveMarkerDir: string
+  ): Promise<ImageProcessingResult> {
+    const { imageDir, imagePathPrefix } = context;
+    const imageMatches = this.extractImageUrls(markdown);
+    const errors: ImageProcessingError[] = [];
+    let imagesDownloaded = 0;
+    let imagesSkipped = 0;
+    let updatedMarkdown = markdown;
+
+    // Ensure markers directory exists once before processing all images
+    // to avoid repeated filesystem checks in getMarkerPathForDir()
+    const markersDir = path.join(effectiveMarkerDir, '.downloaded-markers');
+    if (!fs.existsSync(markersDir)) {
+      fs.mkdirSync(markersDir, { recursive: true });
+    }
+
+    for (const [_fullMatch, url] of imageMatches) {
+      const result = await this.processSingleImage(
+        url,
+        imageDir,
+        imagePathPrefix,
+        effectiveMarkerDir,
+        errors
+      );
+
+      // Replace the URL in markdown (preserves image syntax)
+      updatedMarkdown = updatedMarkdown.replace(url, result.markdown);
+      imagesDownloaded += result.downloaded;
+      imagesSkipped += result.skipped;
+    }
+
+    return {
+      markdown: updatedMarkdown,
+      imagesProcessed: imageMatches.length,
+      imagesDownloaded,
+      imagesSkipped,
+      errors,
+    };
+  }
+
+  /**
+   * Process markdown with explicit image context.
+   * Used for flat mode where images go to a shared directory.
+   *
+   * This method provides explicit control over:
+   * - Image storage directory (not inferred from post structure)
+   * - Image path prefix for markdown references (configurable for different SSGs)
+   * - Optional custom marker directory (defaults to imageDir)
+   *
+   * Uses marker-based tracking for intelligent retry:
+   * - Skips successfully downloaded images (file + success marker exist)
+   * - Skips permanent HTTP 403 failures (403 marker exists)
+   * - Retries transient failures (error marker or no marker)
+   *
+   * Differences from process():
+   * - Accepts ImageProcessorContext instead of blogDir string
+   * - Uses context.imagePathPrefix instead of hardcoded './'
+   * - Validates imageDir exists (caller must create it)
+   * - Supports custom marker directory for shared image deduplication
+   *
+   * @param markdown - The markdown content to process
+   * @param context - Image processing context with directory and path prefix
+   * @returns Processing result with updated markdown and statistics
+   * @throws {Error} If imageDir does not exist
+   *
+   * @example
+   * ```typescript
+   * // Flat mode: images to shared directory
+   * const result = await processor.processWithContext(markdown, {
+   *   imageDir: '/blog/_images',
+   *   imagePathPrefix: '/images',
+   * });
+   * // result.markdown contains: ![alt](/images/uuid.png)
+   * ```
+   */
+  async processWithContext(
+    markdown: string,
+    context: ImageProcessorContext
+  ): Promise<ImageProcessingResult> {
+    const effectiveMarkerDir = context.markerDir ?? context.imageDir;
+
+    // Validate directory exists
+    if (!fs.existsSync(context.imageDir)) {
+      throw new Error(
+        `Image directory does not exist: ${context.imageDir}. ` +
+          `Ensure directory is created before calling ImageProcessor.`
+      );
+    }
+
+    // Process all images using helper method
+    return this.processImages(markdown, context, effectiveMarkerDir);
   }
 
   /**
