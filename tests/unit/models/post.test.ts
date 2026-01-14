@@ -234,15 +234,7 @@ describe('Post', () => {
           frontmatter: '---\n---',
           content: '',
         });
-      }).toThrow(PostValidationError);
-
-      expect(() => {
-        new Post({
-          slug: '/etc/passwd',
-          frontmatter: '---\n---',
-          content: '',
-        });
-      }).toThrow('absolute paths are not allowed');
+      }).toThrow(new PostValidationError('Invalid slug: absolute paths are not allowed (/etc/passwd)', '/etc/passwd'));
     });
 
     it('should throw PostValidationError for parent directory traversal', () => {
@@ -252,15 +244,7 @@ describe('Post', () => {
           frontmatter: '---\n---',
           content: '',
         });
-      }).toThrow(PostValidationError);
-
-      expect(() => {
-        new Post({
-          slug: '../etc/passwd',
-          frontmatter: '---\n---',
-          content: '',
-        });
-      }).toThrow('parent directory traversal is not allowed');
+      }).toThrow(new PostValidationError('Invalid slug: parent directory traversal is not allowed (../etc/passwd)', '../etc/passwd'));
     });
 
     it('should throw PostValidationError for empty slug after sanitization', () => {
@@ -270,15 +254,7 @@ describe('Post', () => {
           frontmatter: '---\n---',
           content: '',
         });
-      }).toThrow(PostValidationError);
-
-      expect(() => {
-        new Post({
-          slug: '   ',
-          frontmatter: '---\n---',
-          content: '',
-        });
-      }).toThrow('empty after sanitization');
+      }).toThrow(new PostValidationError('Invalid slug: slug is empty after sanitization (original:    )', '   '));
     });
 
     it('should include original slug in error', () => {

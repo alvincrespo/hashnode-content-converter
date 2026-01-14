@@ -43,21 +43,13 @@ describe('FileWriter', () => {
       it('should reject parent directory traversal', async () => {
         await expect(
           fileWriter.writePost('./blog', '../etc/passwd', '---\n', 'content')
-        ).rejects.toThrow(PostValidationError);
-
-        await expect(
-          fileWriter.writePost('./blog', '../etc/passwd', '---\n', 'content')
-        ).rejects.toThrow('parent directory traversal is not allowed');
+        ).rejects.toThrow(new PostValidationError('Invalid slug: parent directory traversal is not allowed (../etc/passwd)', '../etc/passwd'));
       });
 
       it('should reject absolute paths', async () => {
         await expect(
           fileWriter.writePost('./blog', '/etc/passwd', '---\n', 'content')
-        ).rejects.toThrow(PostValidationError);
-
-        await expect(
-          fileWriter.writePost('./blog', '/etc/passwd', '---\n', 'content')
-        ).rejects.toThrow('absolute paths are not allowed');
+        ).rejects.toThrow(new PostValidationError('Invalid slug: absolute paths are not allowed (/etc/passwd)', '/etc/passwd'));
       });
 
       it('should sanitize special characters by replacing with hyphens', async () => {
@@ -75,11 +67,7 @@ describe('FileWriter', () => {
         // Slug with only whitespace becomes empty after trim
         await expect(
           fileWriter.writePost('./blog', '   ', '---\n', 'content')
-        ).rejects.toThrow(PostValidationError);
-
-        await expect(
-          fileWriter.writePost('./blog', '   ', '---\n', 'content')
-        ).rejects.toThrow('empty after sanitization');
+        ).rejects.toThrow(new PostValidationError('Invalid slug: slug is empty after sanitization (original:    )', '   '));
       });
     });
   });
