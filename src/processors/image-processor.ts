@@ -230,11 +230,14 @@ export class ImageProcessor {
 
   /**
    * Get marker path for a specific directory.
-   * Creates the markers directory if it doesn't exist.
    *
    * This method differs from getMarkerPath() by accepting baseDir
    * parameter instead of using class instance blogDir, enabling
    * marker files in arbitrary directories (shared image folders).
+   *
+   * Note: The caller is responsible for ensuring the markers directory exists
+   * before calling this method. This avoids repeated filesystem checks when
+   * processing multiple images.
    *
    * @param baseDir - Base directory for marker storage
    * @param filename - Image filename (e.g., 'uuid.png')
@@ -242,12 +245,6 @@ export class ImageProcessor {
    */
   private getMarkerPathForDir(baseDir: string, filename: string): string {
     const markersDir = path.join(baseDir, '.downloaded-markers');
-
-    // Ensure markers directory exists
-    if (!fs.existsSync(markersDir)) {
-      fs.mkdirSync(markersDir, { recursive: true });
-    }
-
     return path.join(markersDir, `${filename}.marker`);
   }
 
@@ -465,6 +462,13 @@ export class ImageProcessor {
     let imagesDownloaded = 0;
     let imagesSkipped = 0;
     let updatedMarkdown = markdown;
+
+    // Ensure markers directory exists once before processing all images
+    // to avoid repeated filesystem checks in getMarkerPathForDir()
+    const markersDir = path.join(effectiveMarkerDir, '.downloaded-markers');
+    if (!fs.existsSync(markersDir)) {
+      fs.mkdirSync(markersDir, { recursive: true });
+    }
 
     for (const [fullMatch, url] of imageMatches) {
       const result = await this.processSingleImage(
