@@ -18,7 +18,7 @@
 - ✅ 16 flat mode specific tests
 - ✅ Regression tests for nested mode maintained
 - ✅ Test patterns follow Vitest conventions
-- ✅ Project coverage: 99.36%
+- ✅ Overall project coverage: 99.38%
 
 **Next Steps:**
 1. Run tests to verify all pass
