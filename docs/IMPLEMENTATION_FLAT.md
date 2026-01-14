@@ -675,12 +675,14 @@ private recordDownloadFailureForDir(
 ```
 
 #### Step 3.2: Write ImageProcessor Unit Tests
-- [ ] Test `processWithContext` uses provided `imageDir`
-- [ ] Test `processWithContext` uses provided `imagePathPrefix`
-- [ ] Test marker files created in shared directory
-- [ ] Test path prefix with trailing slash
-- [ ] Test path prefix without trailing slash
-- [ ] Test existing `process()` method unchanged
+- [x] Test `processWithContext` uses provided `imageDir` (Written in Step 3.1)
+- [x] Test `processWithContext` uses provided `imagePathPrefix` (Written in Step 3.1)
+- [x] Test marker files created in shared directory (Written in Step 3.1)
+- [x] Test path prefix with trailing slash (Written in Step 3.1)
+- [x] Test path prefix without trailing slash (Written in Step 3.1)
+- [x] Test existing `process()` method unchanged (Written in Step 3.1)
+
+**Status**: ✅ COMPLETE - All tests were written during Step 3.1 implementation (78 tests, 99.46% coverage)
 
 **Test Cases for `tests/unit/processors/image-processor.test.ts`:**
 
