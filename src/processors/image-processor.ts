@@ -374,7 +374,6 @@ export class ImageProcessor {
    * Handles filename extraction, marker checking, downloading, and markdown replacement.
    *
    * @param url - CDN image URL to process
-   * @param fullMatch - Full markdown match (for replacement)
    * @param imageDir - Directory for image storage
    * @param imagePathPrefix - Path prefix for markdown references
    * @param effectiveMarkerDir - Directory for marker files
@@ -383,7 +382,6 @@ export class ImageProcessor {
    */
   private async processSingleImage(
     url: string,
-    fullMatch: string,
     imageDir: string,
     imagePathPrefix: string,
     effectiveMarkerDir: string,
@@ -399,7 +397,7 @@ export class ImageProcessor {
         error: 'Could not extract hash from URL',
         is403: false,
       });
-      return { markdown: fullMatch, downloaded: 0, skipped: 0 };
+      return { markdown: url, downloaded: 0, skipped: 0 };
     }
 
     const filepath = path.join(imageDir, filename);
@@ -416,7 +414,7 @@ export class ImageProcessor {
         return { markdown: localPath, downloaded: 0, skipped: 1 };
       }
       // 403 - keep CDN URL
-      return { markdown: fullMatch, downloaded: 0, skipped: 1 };
+      return { markdown: url, downloaded: 0, skipped: 1 };
     }
 
     // Attempt download
@@ -435,12 +433,12 @@ export class ImageProcessor {
         return { markdown: localPath, downloaded: 1, skipped: 0 };
       }
       // Download failed - keep CDN URL
-      return { markdown: fullMatch, downloaded: 0, skipped: 0 };
+      return { markdown: url, downloaded: 0, skipped: 0 };
     } catch (error) {
       // Unexpected error during download
       const errorMsg = error instanceof Error ? error.message : String(error);
       this.recordDownloadFailureForDir(filename, url, errorMsg, false, effectiveMarkerDir, errors);
-      return { markdown: fullMatch, downloaded: 0, skipped: 0 };
+      return { markdown: url, downloaded: 0, skipped: 0 };
     }
   }
 
@@ -473,18 +471,17 @@ export class ImageProcessor {
       fs.mkdirSync(markersDir, { recursive: true });
     }
 
-    for (const [fullMatch, url] of imageMatches) {
+    for (const [, url] of imageMatches) {
       const result = await this.processSingleImage(
         url,
-        fullMatch,
         imageDir,
         imagePathPrefix,
         effectiveMarkerDir,
         errors
       );
 
-      // Replace the matched URL in markdown
-      updatedMarkdown = updatedMarkdown.replace(fullMatch, result.markdown);
+      // Replace the URL in markdown (preserves image syntax)
+      updatedMarkdown = updatedMarkdown.replace(url, result.markdown);
       imagesDownloaded += result.downloaded;
       imagesSkipped += result.skipped;
     }
