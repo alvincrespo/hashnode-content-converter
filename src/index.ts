@@ -56,6 +56,12 @@ export type {
 export { FileWriter, FileWriteError } from './services/file-writer.js';
 export type { FileWriterConfig } from './services/file-writer.js';
 
+// -----------------------------------------------------------------------------
+// Models
+// -----------------------------------------------------------------------------
+export { Post, PostValidationError } from './models/post.js';
+export type { PostConfig, OutputMode } from './models/post.js';
+
 export { Logger } from './services/logger.js';
 
 // -----------------------------------------------------------------------------
