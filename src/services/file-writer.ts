@@ -192,16 +192,24 @@ export class FileWriter {
   }
 
   /**
-   * Check if a post already exists in the output directory
+   * Check if a post already exists in the output directory.
+   * In nested mode, checks for directory existence.
+   * In flat mode, checks for {slug}.md file existence.
    * @param outputDir - Base output directory
    * @param slug - Post slug to check
-   * @returns True if post directory exists, false otherwise
+   * @returns True if post exists, false otherwise (including on errors)
    */
   postExists(outputDir: string, slug: string): boolean {
     try {
-      const sanitized = this.sanitizeSlug(slug);
-      const postDir = path.join(outputDir, sanitized);
-      return fs.existsSync(postDir);
+      let sanitized = this.sanitizeSlug(slug);
+
+      // Flat mode: check for {slug}.md file
+      if (this.config.outputMode === 'flat') {
+        sanitized = `${sanitized}.md`;
+      }
+
+      const postPath = path.join(outputDir, sanitized);
+      return fs.existsSync(postPath);
     } catch {
       // If sanitization fails, the post doesn't exist (invalid slug)
       return false;
