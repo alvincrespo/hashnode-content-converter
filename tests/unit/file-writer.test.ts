@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { FileWriter, FileWriteError } from '../../src/services/file-writer.js';
+import { Post, PostValidationError } from '../../src/models/post.js';
 
 // Mock fs and path modules
 vi.mock('node:fs');
@@ -42,21 +43,13 @@ describe('FileWriter', () => {
       it('should reject parent directory traversal', async () => {
         await expect(
           fileWriter.writePost('./blog', '../etc/passwd', '---\n', 'content')
-        ).rejects.toThrow(FileWriteError);
-
-        await expect(
-          fileWriter.writePost('./blog', '../etc/passwd', '---\n', 'content')
-        ).rejects.toThrow('parent directory traversal is not allowed');
+        ).rejects.toThrow(new PostValidationError('Invalid slug: parent directory traversal is not allowed (../etc/passwd)', '../etc/passwd'));
       });
 
       it('should reject absolute paths', async () => {
         await expect(
           fileWriter.writePost('./blog', '/etc/passwd', '---\n', 'content')
-        ).rejects.toThrow(FileWriteError);
-
-        await expect(
-          fileWriter.writePost('./blog', '/etc/passwd', '---\n', 'content')
-        ).rejects.toThrow('absolute paths are not allowed');
+        ).rejects.toThrow(new PostValidationError('Invalid slug: absolute paths are not allowed (/etc/passwd)', '/etc/passwd'));
       });
 
       it('should sanitize special characters by replacing with hyphens', async () => {
@@ -74,11 +67,7 @@ describe('FileWriter', () => {
         // Slug with only whitespace becomes empty after trim
         await expect(
           fileWriter.writePost('./blog', '   ', '---\n', 'content')
-        ).rejects.toThrow(FileWriteError);
-
-        await expect(
-          fileWriter.writePost('./blog', '   ', '---\n', 'content')
-        ).rejects.toThrow('empty after sanitization');
+        ).rejects.toThrow(new PostValidationError('Invalid slug: slug is empty after sanitization (original:    )', '   '));
       });
     });
   });
@@ -317,28 +306,95 @@ describe('FileWriter', () => {
     });
   });
 
-  describe('postExists()', () => {
-    it('should return true if post directory exists', () => {
-      vi.mocked(fs.existsSync).mockReturnValue(true);
+  describe('Post Existence Check', () => {
+    describe('nested mode (default)', () => {
+      it('should return true if post directory exists', () => {
+        vi.mocked(fs.existsSync).mockReturnValue(true);
 
-      const result = fileWriter.postExists('./blog', 'existing-post');
+        const result = fileWriter.postExists('./blog', 'existing-post');
 
-      expect(result).toBe(true);
-      expect(fs.existsSync).toHaveBeenCalledWith(expect.stringContaining('existing-post'));
+        expect(result).toBe(true);
+        expect(fs.existsSync).toHaveBeenCalledWith(expect.stringContaining('existing-post'));
+      });
+
+      it('should return false if post directory does not exist', () => {
+        vi.mocked(fs.existsSync).mockReturnValue(false);
+
+        const result = fileWriter.postExists('./blog', 'non-existent-post');
+
+        expect(result).toBe(false);
+      });
+
+      it('should return false on invalid slug (sanitization fails)', () => {
+        const result = fileWriter.postExists('./blog', '/invalid/slug');
+
+        expect(result).toBe(false);
+      });
+
+      it('should re-throw unexpected errors (non-PostValidationError)', () => {
+        const unexpectedError = new Error('Unexpected filesystem error');
+        vi.mocked(fs.existsSync).mockImplementation(() => {
+          throw unexpectedError;
+        });
+
+        expect(() => fileWriter.postExists('./blog', 'valid-slug')).toThrow(unexpectedError);
+      });
+
+      it('should check for directory, not file, in nested mode', () => {
+        vi.mocked(fs.existsSync).mockReturnValue(true);
+
+        fileWriter.postExists('./blog', 'my-post');
+
+        // Should NOT have .md extension in nested mode
+        const calledPath = vi.mocked(fs.existsSync).mock.calls[0][0] as string;
+        expect(calledPath).not.toContain('.md');
+        expect(calledPath).toContain('my-post');
+      });
     });
 
-    it('should return false if post directory does not exist', () => {
-      vi.mocked(fs.existsSync).mockReturnValue(false);
+    describe('flat mode', () => {
+      let flatWriter: FileWriter;
 
-      const result = fileWriter.postExists('./blog', 'non-existent-post');
+      beforeEach(() => {
+        flatWriter = new FileWriter({ outputMode: 'flat' });
+      });
 
-      expect(result).toBe(false);
-    });
+      it('should return true when {slug}.md file exists', () => {
+        vi.mocked(fs.existsSync).mockReturnValue(true);
 
-    it('should return false on invalid slug (sanitization fails)', () => {
-      const result = fileWriter.postExists('./blog', '/invalid/slug');
+        const result = flatWriter.postExists('./blog', 'test-post');
 
-      expect(result).toBe(false);
+        expect(result).toBe(true);
+        expect(fs.existsSync).toHaveBeenCalledWith(
+          expect.stringMatching(/test-post\.md$/)
+        );
+      });
+
+      it('should return false when {slug}.md file does not exist', () => {
+        vi.mocked(fs.existsSync).mockReturnValue(false);
+
+        const result = flatWriter.postExists('./blog', 'non-existent');
+
+        expect(result).toBe(false);
+      });
+
+      it('should check for {slug}.md file, not directory', () => {
+        vi.mocked(fs.existsSync).mockReturnValue(false);
+
+        flatWriter.postExists('./blog', 'my-post');
+
+        // Verify it checks for .md file
+        expect(fs.existsSync).toHaveBeenCalledWith(
+          expect.stringContaining('my-post.md')
+        );
+      });
+
+      it('should return false on invalid slug (graceful error handling)', () => {
+        // Invalid slug triggers sanitization error
+        const result = flatWriter.postExists('./blog', '/invalid/slug');
+
+        expect(result).toBe(false);
+      });
     });
   });
 
@@ -416,6 +472,341 @@ describe('FileWriter', () => {
         expect(error).toBeInstanceOf(FileWriteError);
         expect((error as FileWriteError).cause).toBe(originalError);
       }
+    });
+  });
+
+  describe('outputMode Configuration', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+      vi.mocked(fs.existsSync).mockReturnValue(false);
+      vi.mocked(fs.promises.mkdir).mockResolvedValue(undefined);
+      vi.mocked(fs.promises.writeFile).mockResolvedValue(undefined);
+      vi.mocked(fs.promises.rename).mockResolvedValue(undefined);
+    });
+
+    it('should default outputMode to nested when not provided', async () => {
+      const writer = new FileWriter();
+      const result = await writer.writePost('./blog', 'my-post', '---\n', 'content');
+      // Verify nested behavior (creates {slug}/index.md)
+      expect(result).toContain('my-post/index.md');
+    });
+
+    it('should accept nested outputMode explicitly', async () => {
+      const writer = new FileWriter({ outputMode: 'nested' });
+      const result = await writer.writePost('./blog', 'my-post', '---\n', 'content');
+      expect(result).toContain('my-post/index.md');
+    });
+
+    it('should accept flat outputMode', () => {
+      // For now, just verify the config is accepted without error
+      // Actual flat behavior will be tested in Step 2.3
+      const writer = new FileWriter({ outputMode: 'flat' });
+      expect(writer).toBeInstanceOf(FileWriter);
+    });
+
+    it('should use default values when config is undefined', async () => {
+      const writer = new FileWriter(undefined);
+      const result = await writer.writePost('./blog', 'my-post', '---\n', 'content');
+      expect(result).toContain('my-post/index.md');
+    });
+  });
+
+  describe('writePost - flat mode', () => {
+    let flatWriter: FileWriter;
+
+    beforeEach(() => {
+      vi.clearAllMocks();
+      flatWriter = new FileWriter({ outputMode: 'flat' });
+      vi.mocked(fs.existsSync).mockReturnValue(false);
+      vi.mocked(fs.promises.mkdir).mockResolvedValue(undefined);
+      vi.mocked(fs.promises.writeFile).mockResolvedValue(undefined);
+      vi.mocked(fs.promises.rename).mockResolvedValue(undefined);
+    });
+
+    describe('file path behavior', () => {
+      it('should write {slug}.md directly in output directory', async () => {
+        const result = await flatWriter.writePost('./blog', 'my-post', '---\n', 'content');
+
+        expect(result).toContain('my-post.md');
+        expect(result).not.toContain('my-post/index.md');
+      });
+
+      it('should NOT create subdirectory in flat mode', async () => {
+        await flatWriter.writePost('./blog', 'my-post', '---\n', 'content');
+
+        // mkdir should NOT be called with post subdirectory path
+        const mkdirCalls = vi.mocked(fs.promises.mkdir).mock.calls;
+        for (const call of mkdirCalls) {
+          expect(call[0]).not.toContain('my-post');
+        }
+      });
+
+      it('should return absolute path ending with {slug}.md', async () => {
+        const result = await flatWriter.writePost('./blog', 'test-post', '---\n', 'content');
+
+        expect(result).toMatch(/test-post\.md$/);
+        expect(result).toMatch(/^\/.*test-post\.md$/);
+      });
+    });
+
+    describe('directory creation', () => {
+      it('should create output directory if it does not exist', async () => {
+        vi.mocked(fs.existsSync).mockReturnValue(false);
+
+        await flatWriter.writePost('./blog', 'my-post', '---\n', 'content');
+
+        expect(fs.promises.mkdir).toHaveBeenCalledWith('./blog', { recursive: true });
+      });
+
+      it('should throw FileWriteError on mkdir failure', async () => {
+        vi.mocked(fs.promises.mkdir).mockRejectedValue(new Error('EACCES: permission denied'));
+
+        await expect(
+          flatWriter.writePost('./blog', 'my-post', '---\n', 'content')
+        ).rejects.toThrow(FileWriteError);
+
+        await expect(
+          flatWriter.writePost('./blog', 'my-post', '---\n', 'content')
+        ).rejects.toMatchObject({
+          operation: 'create_dir',
+          path: './blog'
+        });
+      });
+    });
+
+    describe('overwrite behavior', () => {
+      it('should throw error if {slug}.md exists and overwrite is false', async () => {
+        vi.mocked(fs.existsSync).mockReturnValue(true); // file exists
+
+        await expect(
+          flatWriter.writePost('./blog', 'existing-post', '---\n', 'content')
+        ).rejects.toThrow('already exists and overwrite is disabled');
+      });
+
+      it('should throw FileWriteError when file exists in flat mode', async () => {
+        vi.mocked(fs.existsSync).mockReturnValue(true); // file exists
+
+        await expect(
+          flatWriter.writePost('./blog', 'existing-post', '---\n', 'content')
+        ).rejects.toThrow(FileWriteError);
+      });
+
+      it('should overwrite {slug}.md when overwrite is true', async () => {
+        const overwriteFlatWriter = new FileWriter({ outputMode: 'flat', overwrite: true });
+        vi.mocked(fs.existsSync).mockReturnValue(true); // file exists
+
+        await expect(
+          overwriteFlatWriter.writePost('./blog', 'existing-post', '---\n', 'new content')
+        ).resolves.toBeDefined();
+
+        expect(fs.promises.writeFile).toHaveBeenCalled();
+      });
+    });
+
+    describe('atomic writes', () => {
+      it('should use atomic writes for flat mode files', async () => {
+        vi.mocked(fs.existsSync).mockReturnValue(false); // file doesn't exist
+        await flatWriter.writePost('./blog', 'atomic-post', '---\n', 'content');
+
+        // Should write to .tmp file first
+        expect(fs.promises.writeFile).toHaveBeenCalledWith(
+          expect.stringContaining('atomic-post.md.tmp'),
+          expect.any(String),
+          'utf8'
+        );
+
+        // Should rename to final location
+        expect(fs.promises.rename).toHaveBeenCalledWith(
+          expect.stringContaining('atomic-post.md.tmp'),
+          expect.stringContaining('atomic-post.md')
+        );
+      });
+
+      it('should use direct writes when atomicWrites is false in flat mode', async () => {
+        const directFlatWriter = new FileWriter({ outputMode: 'flat', atomicWrites: false });
+        vi.mocked(fs.existsSync).mockReturnValue(false); // file doesn't exist
+
+        await directFlatWriter.writePost('./blog', 'direct-post', '---\n', 'content');
+
+        // Should NOT use rename (direct write)
+        expect(fs.promises.rename).not.toHaveBeenCalled();
+        expect(fs.promises.writeFile).toHaveBeenCalledWith(
+          expect.stringContaining('direct-post.md'),
+          expect.any(String),
+          'utf8'
+        );
+      });
+    });
+  });
+
+  describe('write() method with Post model', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+      vi.mocked(fs.existsSync).mockReturnValue(false);
+      vi.mocked(fs.promises.mkdir).mockResolvedValue(undefined);
+      vi.mocked(fs.promises.writeFile).mockResolvedValue(undefined);
+      vi.mocked(fs.promises.rename).mockResolvedValue(undefined);
+    });
+
+    describe('nested mode', () => {
+      it('should write post using Post model path resolution', async () => {
+        const writer = new FileWriter();
+        const post = new Post({
+          slug: 'my-post',
+          frontmatter: '---\ntitle: Test\n---',
+          content: '# Hello',
+          outputMode: 'nested',
+        });
+
+        const result = await writer.write(post, './blog');
+
+        expect(result).toContain('my-post/index.md');
+        expect(fs.promises.mkdir).toHaveBeenCalledWith(
+          expect.stringContaining('my-post'),
+          { recursive: true }
+        );
+      });
+
+      it('should use Post.getMarkdown() for content', async () => {
+        const writer = new FileWriter();
+        const post = new Post({
+          slug: 'test-post',
+          frontmatter: '---\ntitle: Test\n---',
+          content: '# Content',
+          outputMode: 'nested',
+        });
+
+        await writer.write(post, './blog');
+
+        expect(fs.promises.writeFile).toHaveBeenCalledWith(
+          expect.any(String),
+          '---\ntitle: Test\n---\n# Content',
+          'utf8'
+        );
+      });
+    });
+
+    describe('flat mode', () => {
+      it('should write {slug}.md in flat mode', async () => {
+        const writer = new FileWriter();
+        const post = new Post({
+          slug: 'flat-post',
+          frontmatter: '---\n---',
+          content: '',
+          outputMode: 'flat',
+        });
+
+        const result = await writer.write(post, './blog');
+
+        expect(result).toContain('flat-post.md');
+        expect(result).not.toContain('index.md');
+      });
+
+      it('should create only output directory in flat mode', async () => {
+        const writer = new FileWriter();
+        const post = new Post({
+          slug: 'flat-post',
+          frontmatter: '---\n---',
+          content: '',
+          outputMode: 'flat',
+        });
+
+        await writer.write(post, './blog');
+
+        // Should create ./blog, not ./blog/flat-post
+        expect(fs.promises.mkdir).toHaveBeenCalledWith('./blog', { recursive: true });
+      });
+    });
+
+    describe('overwrite behavior', () => {
+      it('should throw error when file exists and overwrite is false', async () => {
+        const writer = new FileWriter({ overwrite: false });
+        const post = new Post({
+          slug: 'existing-post',
+          frontmatter: '---\n---',
+          content: '',
+          outputMode: 'nested',
+        });
+
+        vi.mocked(fs.existsSync).mockReturnValue(true); // file exists
+
+        await expect(writer.write(post, './blog')).rejects.toThrow(
+          'already exists and overwrite is disabled'
+        );
+      });
+
+      it('should overwrite when overwrite is true', async () => {
+        const writer = new FileWriter({ overwrite: true });
+        const post = new Post({
+          slug: 'existing-post',
+          frontmatter: '---\n---',
+          content: 'new content',
+          outputMode: 'nested',
+        });
+
+        vi.mocked(fs.existsSync).mockReturnValue(true); // file exists
+
+        await expect(writer.write(post, './blog')).resolves.toBeDefined();
+        expect(fs.promises.writeFile).toHaveBeenCalled();
+      });
+    });
+
+    describe('directory creation', () => {
+      it('should throw FileWriteError on mkdir failure', async () => {
+        const writer = new FileWriter();
+        const post = new Post({
+          slug: 'my-post',
+          frontmatter: '---\n---',
+          content: '',
+          outputMode: 'nested',
+        });
+
+        vi.mocked(fs.existsSync).mockReturnValue(false);
+        vi.mocked(fs.promises.mkdir).mockRejectedValue(new Error('Permission denied'));
+
+        await expect(writer.write(post, './blog')).rejects.toThrow(FileWriteError);
+        await expect(writer.write(post, './blog')).rejects.toThrow('Failed to create directory');
+      });
+    });
+
+    describe('atomic writes', () => {
+      it('should use atomic writes by default', async () => {
+        const writer = new FileWriter();
+        const post = new Post({
+          slug: 'atomic-post',
+          frontmatter: '---\n---',
+          content: '',
+          outputMode: 'nested',
+        });
+
+        await writer.write(post, './blog');
+
+        expect(fs.promises.writeFile).toHaveBeenCalledWith(
+          expect.stringContaining('.tmp'),
+          expect.any(String),
+          'utf8'
+        );
+        expect(fs.promises.rename).toHaveBeenCalled();
+      });
+
+      it('should use direct writes when atomicWrites is false', async () => {
+        const writer = new FileWriter({ atomicWrites: false });
+        const post = new Post({
+          slug: 'direct-post',
+          frontmatter: '---\n---',
+          content: '',
+          outputMode: 'nested',
+        });
+
+        await writer.write(post, './blog');
+
+        expect(fs.promises.rename).not.toHaveBeenCalled();
+        expect(fs.promises.writeFile).toHaveBeenCalledWith(
+          expect.stringContaining('index.md'),
+          expect.any(String),
+          'utf8'
+        );
+      });
     });
   });
 });
