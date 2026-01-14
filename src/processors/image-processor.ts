@@ -447,17 +447,16 @@ export class ImageProcessor {
    * Extracts image URLs and processes each one with context.
    *
    * @param markdown - Markdown content with image URLs
-   * @param imageDir - Directory for image storage
-   * @param imagePathPrefix - Path prefix for markdown references
-   * @param effectiveMarkerDir - Directory for marker files
+   * @param context - Image processing context with directory and path prefix
+   * @param effectiveMarkerDir - Directory for marker files (computed from context)
    * @returns Processing result with updated markdown and statistics
    */
   private async processImages(
     markdown: string,
-    imageDir: string,
-    imagePathPrefix: string,
+    context: ImageProcessorContext,
     effectiveMarkerDir: string
   ): Promise<ImageProcessingResult> {
+    const { imageDir, imagePathPrefix } = context;
     const imageMatches = this.extractImageUrls(markdown);
     const errors: ImageProcessingError[] = [];
     let imagesDownloaded = 0;
@@ -534,19 +533,18 @@ export class ImageProcessor {
     markdown: string,
     context: ImageProcessorContext
   ): Promise<ImageProcessingResult> {
-    const { imageDir, imagePathPrefix, markerDir } = context;
-    const effectiveMarkerDir = markerDir ?? imageDir;
+    const effectiveMarkerDir = context.markerDir ?? context.imageDir;
 
     // Validate directory exists
-    if (!fs.existsSync(imageDir)) {
+    if (!fs.existsSync(context.imageDir)) {
       throw new Error(
-        `Image directory does not exist: ${imageDir}. ` +
+        `Image directory does not exist: ${context.imageDir}. ` +
           `Ensure directory is created before calling ImageProcessor.`
       );
     }
 
     // Process all images using helper method
-    return this.processImages(markdown, imageDir, imagePathPrefix, effectiveMarkerDir);
+    return this.processImages(markdown, context, effectiveMarkerDir);
   }
 
   /**
