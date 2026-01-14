@@ -458,11 +458,11 @@ async writePost(
 ```
 
 #### Step 2.4: Write FileWriter Unit Tests
-- [ ] Test `postExists()` returns true when `{slug}.md` exists in flat mode
-- [ ] Test `postExists()` returns false when `{slug}.md` does not exist in flat mode
-- [ ] Test `writePost()` creates `{slug}.md` in flat mode (no subdirectory)
-- [ ] Test `writePost()` creates output directory if missing in flat mode
-- [ ] Test nested mode behavior remains unchanged
+- [x] Test `postExists()` returns true when `{slug}.md` exists in flat mode
+- [x] Test `postExists()` returns false when `{slug}.md` does not exist in flat mode
+- [x] Test `writePost()` creates `{slug}.md` in flat mode (no subdirectory)
+- [x] Test `writePost()` creates output directory if missing in flat mode
+- [x] Test nested mode behavior remains unchanged
 
 **Test Cases for `tests/unit/services/file-writer.test.ts`:**
 
