@@ -85,6 +85,13 @@ describe('Converter', () => {
         imagesSkipped: 0,
         errors: [],
       }),
+      processWithContext: vi.fn().mockResolvedValue({
+        markdown: '# Test Content',
+        imagesProcessed: 0,
+        imagesDownloaded: 0,
+        imagesSkipped: 0,
+        errors: [],
+      }),
     } as unknown as ImageProcessor;
 
     mockFrontmatterGenerator = {
@@ -710,6 +717,123 @@ describe('Converter', () => {
         expect.any(String),
         '# Content with local images'
       );
+    });
+  });
+
+  describe('convertPost - Flat Output Mode', () => {
+    it('should use processWithContext in flat mode', async () => {
+      const options = { outputStructure: { mode: 'flat' as const } };
+
+      await converter.convertPost(samplePost, '/output', options);
+
+      expect(mockImageProcessor.processWithContext).toHaveBeenCalledWith(
+        '# Test Content',
+        expect.objectContaining({
+          imageDir: '/_images',
+          imagePathPrefix: '/images',
+        })
+      );
+      expect(mockImageProcessor.process).not.toHaveBeenCalled();
+    });
+
+    it('should respect custom imageFolderName in flat mode', async () => {
+      const options = {
+        outputStructure: { mode: 'flat' as const, imageFolderName: 'assets' },
+      };
+
+      await converter.convertPost(samplePost, '/src/_posts', options);
+
+      expect(mockImageProcessor.processWithContext).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          imageDir: '/src/assets',
+          imagePathPrefix: '/images',
+        })
+      );
+    });
+
+    it('should respect custom imagePathPrefix in flat mode', async () => {
+      const options = {
+        outputStructure: { mode: 'flat' as const, imagePathPrefix: '/static/img' },
+      };
+
+      await converter.convertPost(samplePost, '/output', options);
+
+      expect(mockImageProcessor.processWithContext).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          imagePathPrefix: '/static/img',
+        })
+      );
+    });
+
+    it('should create FileWriter with flat mode config', async () => {
+      const options = { outputStructure: { mode: 'flat' as const } };
+
+      // Mock fs.existsSync to return false for the flat mode file check
+      // (FileWriter checks if {slug}.md exists in flat mode)
+      vi.mocked(fs.existsSync).mockImplementation((path) => {
+        const pathStr = String(path);
+        // Return false for flat mode file path check
+        if (pathStr.includes('test-post.md')) {
+          return false;
+        }
+        // Return true for directory existence checks
+        return true;
+      });
+
+      const result = await converter.convertPost(samplePost, '/output', options);
+
+      // In flat mode, a new FileWriter instance is created,
+      // which uses the actual Write tool implementation.
+      expect(result.success).toBe(true);
+      expect(result.outputPath).toBeTruthy();
+
+      // Restore default mock behavior
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+    });
+
+    it('should use nested mode by default (backward compatibility)', async () => {
+      // No outputStructure option
+      await converter.convertPost(samplePost, '/output');
+
+      expect(mockImageProcessor.process).toHaveBeenCalledWith(
+        '# Test Content',
+        '/output/test-post'
+      );
+      expect(mockImageProcessor.processWithContext).not.toHaveBeenCalled();
+    });
+
+    it('should use nested mode when explicitly specified', async () => {
+      const options = { outputStructure: { mode: 'nested' as const } };
+
+      await converter.convertPost(samplePost, '/output', options);
+
+      expect(mockImageProcessor.process).toHaveBeenCalledWith(
+        '# Test Content',
+        '/output/test-post'
+      );
+      expect(mockImageProcessor.processWithContext).not.toHaveBeenCalled();
+    });
+
+    it('should handle image directory creation errors in flat mode', async () => {
+      const options = { outputStructure: { mode: 'flat' as const } };
+
+      // Mock fs.existsSync to return false (directory doesn't exist)
+      vi.mocked(fs.existsSync).mockReturnValue(false);
+
+      // Mock fs.mkdirSync to throw an error
+      vi.mocked(fs.mkdirSync).mockImplementationOnce(() => {
+        throw new Error('Permission denied');
+      });
+
+      const result = await converter.convertPost(samplePost, '/output', options);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Permission denied');
+
+      // Restore fs.mkdirSync to default behavior for other tests
+      vi.mocked(fs.mkdirSync).mockReturnValue(undefined);
     });
   });
 

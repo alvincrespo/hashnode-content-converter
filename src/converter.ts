@@ -19,6 +19,7 @@ import type {
   ImageDownloadedEvent,
   ConversionErrorEvent,
 } from './types/converter-events.js';
+import type { ImageProcessingResult } from './types/image-processor.js';
 
 /**
  * Optional dependencies for testing via dependency injection
@@ -379,6 +380,10 @@ export class Converter extends EventEmitter {
   ): Promise<ConvertedPost> {
     const slug = this.extractSlugSafely(post, 0);
 
+    // Extract output structure configuration (default to nested for backward compatibility)
+    const outputStructure = options?.outputStructure ?? { mode: 'nested' };
+    const isFlat = outputStructure.mode === 'flat';
+
     try {
       // Step 1: Parse post metadata
       const metadata = this.postParser.parse(post);
@@ -386,19 +391,48 @@ export class Converter extends EventEmitter {
       // Step 2: Transform markdown (remove Hashnode quirks)
       const transformedMarkdown = this.markdownTransformer.transform(metadata.contentMarkdown);
 
-      // Step 3: Create post directory (required by ImageProcessor)
-      const postDir = path.join(outputDir, metadata.slug);
-      if (!fs.existsSync(postDir)) {
-        fs.mkdirSync(postDir, { recursive: true });
+      // Step 3: Determine image directory and path prefix based on output mode
+      let imageDir: string;
+      let imagePathPrefix: string;
+
+      if (isFlat) {
+        // Flat mode: images go to sibling folder (e.g., src/_images alongside src/_posts)
+        const parentDir = path.dirname(outputDir);
+        const imageFolderName = outputStructure.imageFolderName ?? '_images';
+        imageDir = path.join(parentDir, imageFolderName);
+        imagePathPrefix = outputStructure.imagePathPrefix ?? '/images';
+      } else {
+        // Nested mode (default): images go into post subdirectory
+        imageDir = path.join(outputDir, metadata.slug);
+        imagePathPrefix = '.';
+      }
+
+      // Create image directory if it doesn't exist
+      if (!fs.existsSync(imageDir)) {
+        fs.mkdirSync(imageDir, { recursive: true });
       }
 
       // Step 4: Process images (download and replace URLs)
+      // Note: Creating a new ImageProcessor with custom downloadOptions is safe because
+      // download state is persisted via .downloaded-markers/ files on disk, not in-memory.
+      // A new instance will read existing markers and skip already-downloaded images.
+      // Custom options only affect retry behavior for new/failed downloads.
       const imageProcessor =
         options?.downloadOptions
           ? new ImageProcessor(options.downloadOptions)
           : this.imageProcessor;
 
-      const imageResult = await imageProcessor.process(transformedMarkdown, postDir);
+      let imageResult: ImageProcessingResult;
+      if (isFlat) {
+        // Flat mode: use context-aware processing with custom paths
+        imageResult = await imageProcessor.processWithContext(transformedMarkdown, {
+          imageDir,
+          imagePathPrefix,
+        });
+      } else {
+        // Nested mode: use existing method for backward compatibility
+        imageResult = await imageProcessor.process(transformedMarkdown, imageDir);
+      }
 
       // Emit image-downloaded events
       this.emitImageDownloadedEvents(imageResult, metadata.slug);
@@ -409,8 +443,12 @@ export class Converter extends EventEmitter {
       // Step 5: Generate frontmatter
       const frontmatter = this.frontmatterGenerator.generate(metadata);
 
-      // Step 6: Write file
-      const outputPath = await this.fileWriter.writePost(
+      // Step 6: Write file (FileWriter handles flat vs nested path logic)
+      const fileWriter = isFlat
+        ? new FileWriter({ outputMode: 'flat' })
+        : this.fileWriter;
+
+      const outputPath = await fileWriter.writePost(
         outputDir,
         metadata.slug,
         frontmatter,
@@ -432,7 +470,11 @@ export class Converter extends EventEmitter {
         errorType = 'parse';
       } else if (errorMessage.includes('Transform error')) {
         errorType = 'transform';
-      } else if (errorMessage.includes('Failed to write') || errorMessage.includes('create directory')) {
+      } else if (
+        errorMessage.includes('Failed to write') ||
+        errorMessage.includes('create directory') ||
+        errorMessage.includes('Image directory does not exist')
+      ) {
         errorType = 'write';
       }
 
