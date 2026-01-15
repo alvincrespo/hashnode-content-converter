@@ -722,9 +722,16 @@ describe('Converter', () => {
 
   describe('convertPost - Flat Output Mode', () => {
     it('should use processWithContext in flat mode', async () => {
-      const options = { outputStructure: { mode: 'flat' as const } };
+      const flatConverter = new Converter({
+        postParser: mockPostParser,
+        markdownTransformer: mockMarkdownTransformer,
+        imageProcessor: mockImageProcessor,
+        frontmatterGenerator: mockFrontmatterGenerator,
+        fileWriter: mockFileWriter,
+        config: { outputStructure: { mode: 'flat' } },
+      });
 
-      await converter.convertPost(samplePost, '/output', options);
+      await flatConverter.convertPost(samplePost, '/output');
 
       expect(mockImageProcessor.processWithContext).toHaveBeenCalledWith(
         '# Test Content',
@@ -737,11 +744,16 @@ describe('Converter', () => {
     });
 
     it('should respect custom imageFolderName in flat mode', async () => {
-      const options = {
-        outputStructure: { mode: 'flat' as const, imageFolderName: 'assets' },
-      };
+      const flatConverter = new Converter({
+        postParser: mockPostParser,
+        markdownTransformer: mockMarkdownTransformer,
+        imageProcessor: mockImageProcessor,
+        frontmatterGenerator: mockFrontmatterGenerator,
+        fileWriter: mockFileWriter,
+        config: { outputStructure: { mode: 'flat', imageFolderName: 'assets' } },
+      });
 
-      await converter.convertPost(samplePost, '/src/_posts', options);
+      await flatConverter.convertPost(samplePost, '/src/_posts');
 
       expect(mockImageProcessor.processWithContext).toHaveBeenCalledWith(
         expect.any(String),
@@ -753,11 +765,16 @@ describe('Converter', () => {
     });
 
     it('should respect custom imagePathPrefix in flat mode', async () => {
-      const options = {
-        outputStructure: { mode: 'flat' as const, imagePathPrefix: '/static/img' },
-      };
+      const flatConverter = new Converter({
+        postParser: mockPostParser,
+        markdownTransformer: mockMarkdownTransformer,
+        imageProcessor: mockImageProcessor,
+        frontmatterGenerator: mockFrontmatterGenerator,
+        fileWriter: mockFileWriter,
+        config: { outputStructure: { mode: 'flat', imagePathPrefix: '/static/img' } },
+      });
 
-      await converter.convertPost(samplePost, '/output', options);
+      await flatConverter.convertPost(samplePost, '/output');
 
       expect(mockImageProcessor.processWithContext).toHaveBeenCalledWith(
         expect.any(String),
@@ -768,7 +785,14 @@ describe('Converter', () => {
     });
 
     it('should create FileWriter with flat mode config', async () => {
-      const options = { outputStructure: { mode: 'flat' as const } };
+      const flatConverter = new Converter({
+        postParser: mockPostParser,
+        markdownTransformer: mockMarkdownTransformer,
+        imageProcessor: mockImageProcessor,
+        frontmatterGenerator: mockFrontmatterGenerator,
+        fileWriter: mockFileWriter,
+        config: { outputStructure: { mode: 'flat' } },
+      });
 
       // Mock fs.existsSync to return false for the flat mode file check
       // (FileWriter checks if {slug}.md exists in flat mode)
@@ -782,10 +806,9 @@ describe('Converter', () => {
         return true;
       });
 
-      const result = await converter.convertPost(samplePost, '/output', options);
+      const result = await flatConverter.convertPost(samplePost, '/output');
 
-      // In flat mode, a new FileWriter instance is created,
-      // which uses the actual Write tool implementation.
+      // FileWriter configured at construction with flat mode
       expect(result.success).toBe(true);
       expect(result.outputPath).toBeTruthy();
 
@@ -805,9 +828,16 @@ describe('Converter', () => {
     });
 
     it('should use nested mode when explicitly specified', async () => {
-      const options = { outputStructure: { mode: 'nested' as const } };
+      const nestedConverter = new Converter({
+        postParser: mockPostParser,
+        markdownTransformer: mockMarkdownTransformer,
+        imageProcessor: mockImageProcessor,
+        frontmatterGenerator: mockFrontmatterGenerator,
+        fileWriter: mockFileWriter,
+        config: { outputStructure: { mode: 'nested' } },
+      });
 
-      await converter.convertPost(samplePost, '/output', options);
+      await nestedConverter.convertPost(samplePost, '/output');
 
       expect(mockImageProcessor.process).toHaveBeenCalledWith(
         '# Test Content',
@@ -817,7 +847,14 @@ describe('Converter', () => {
     });
 
     it('should handle image directory creation errors in flat mode', async () => {
-      const options = { outputStructure: { mode: 'flat' as const } };
+      const flatConverter = new Converter({
+        postParser: mockPostParser,
+        markdownTransformer: mockMarkdownTransformer,
+        imageProcessor: mockImageProcessor,
+        frontmatterGenerator: mockFrontmatterGenerator,
+        fileWriter: mockFileWriter,
+        config: { outputStructure: { mode: 'flat' } },
+      });
 
       // Mock fs.existsSync to return false (directory doesn't exist)
       vi.mocked(fs.existsSync).mockReturnValue(false);
@@ -827,7 +864,7 @@ describe('Converter', () => {
         throw new Error('Permission denied');
       });
 
-      const result = await converter.convertPost(samplePost, '/output', options);
+      const result = await flatConverter.convertPost(samplePost, '/output');
 
       expect(result.success).toBe(false);
       expect(result.error).toContain('Permission denied');

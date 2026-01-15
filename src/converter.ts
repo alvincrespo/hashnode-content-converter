@@ -10,7 +10,7 @@ import { FileWriter } from './services/file-writer.js';
 import { Logger } from './services/logger.js';
 
 import type { HashnodePost, HashnodeExport } from './types/hashnode-schema.js';
-import type { ConversionOptions, OutputStructure } from './types/converter-options.js';
+import type { ConversionOptions, OutputStructure, ConverterConfig } from './types/converter-options.js';
 import type { ConversionResult, ConvertedPost, ConversionError } from './types/conversion-result.js';
 import type {
   ConverterEventMap,
@@ -30,6 +30,12 @@ export interface ConverterDependencies {
   frontmatterGenerator?: FrontmatterGenerator;
   fileWriter?: FileWriter;
   logger?: Logger;
+
+  /**
+   * Instance-level configuration (output structure, etc.)
+   * Separate from runtime ConversionOptions
+   */
+  config?: ConverterConfig;
 }
 
 /**
@@ -69,12 +75,37 @@ export interface ConverterDependencies {
  * ```
  */
 export class Converter extends EventEmitter {
+  /**
+   * Default dependencies used when not provided via dependency injection.
+   * Follows the same pattern as FileWriter.DEFAULTS for consistency.
+   */
+  private static readonly DEFAULTS: Required<Omit<ConverterDependencies, 'logger' | 'config'>> = {
+    postParser: new PostParser(),
+    markdownTransformer: new MarkdownTransformer(),
+    imageProcessor: new ImageProcessor(),
+    frontmatterGenerator: new FrontmatterGenerator(),
+    fileWriter: new FileWriter(),
+  };
+
+  /**
+   * Default configuration when not provided.
+   */
+  private static readonly DEFAULT_CONFIG: Required<ConverterConfig> = {
+    outputStructure: { mode: 'nested' },
+  };
+
   private postParser: PostParser;
   private markdownTransformer: MarkdownTransformer;
   private imageProcessor: ImageProcessor;
   private frontmatterGenerator: FrontmatterGenerator;
   private fileWriter: FileWriter;
   private logger: Logger | null = null;
+
+  /**
+   * Output structure configuration set at instance creation.
+   * Determines file naming and image storage location.
+   */
+  private readonly outputStructure: OutputStructure;
 
   /**
    * Create a new Converter instance.
@@ -84,17 +115,33 @@ export class Converter extends EventEmitter {
   constructor(deps?: ConverterDependencies) {
     super();
 
-    // Initialize processors and services (use injected or create new)
-    this.postParser = deps?.postParser ?? new PostParser();
-    this.markdownTransformer = deps?.markdownTransformer ?? new MarkdownTransformer();
-    this.imageProcessor = deps?.imageProcessor ?? new ImageProcessor();
-    this.frontmatterGenerator = deps?.frontmatterGenerator ?? new FrontmatterGenerator();
-    this.fileWriter = deps?.fileWriter ?? new FileWriter();
+    // Resolve config with defaults
+    const config = { ...Converter.DEFAULT_CONFIG, ...deps?.config };
+    this.outputStructure = config.outputStructure;
 
-    // Logger is initialized per-conversion in convertAllPosts
-    // to allow fresh timestamp and configuration
-    if (deps?.logger) {
-      this.logger = deps.logger;
+    // Determine output mode based on config
+    const outputMode = this.outputStructure.mode === 'flat' ? 'flat' : 'nested';
+
+    // Resolve dependencies with defaults
+    // Special handling for FileWriter: create with correct outputMode if not provided
+    const defaultFileWriter = new FileWriter({ outputMode });
+    const resolved = {
+      ...Converter.DEFAULTS,
+      fileWriter: defaultFileWriter, // Override DEFAULTS.fileWriter with mode-specific one
+      ...deps, // User-provided deps override everything
+    };
+
+    // Assign resolved dependencies
+    this.postParser = resolved.postParser;
+    this.markdownTransformer = resolved.markdownTransformer;
+    this.imageProcessor = resolved.imageProcessor;
+    this.frontmatterGenerator = resolved.frontmatterGenerator;
+    this.fileWriter = resolved.fileWriter;
+
+    // Logger is optional (can be null)
+    // Initialized per-conversion in convertAllPosts to allow fresh timestamp and configuration
+    if (resolved.logger) {
+      this.logger = resolved.logger;
     }
   }
 
@@ -127,9 +174,10 @@ export class Converter extends EventEmitter {
   static async fromExportFile(
     exportPath: string,
     outputDir: string,
-    options?: ConversionOptions
+    options?: ConversionOptions,
+    config?: ConverterConfig
   ): Promise<ConversionResult> {
-    const converter = new Converter();
+    const converter = new Converter({ config });
     return converter.convertAllPosts(exportPath, outputDir, options);
   }
 
@@ -378,11 +426,10 @@ export class Converter extends EventEmitter {
     options?: ConversionOptions
   ): Promise<ConvertedPost> {
     const slug = this.extractSlugSafely(post, 0);
-    const outputStructure = options?.outputStructure ?? { mode: 'nested' };
 
-    // Route to appropriate handler based on output mode
-    if (outputStructure.mode === 'flat') {
-      return this.convertPostFlat(post, slug, outputDir, options, outputStructure);
+    // Route to appropriate handler based on instance-level output mode
+    if (this.outputStructure.mode === 'flat') {
+      return this.convertPostFlat(post, slug, outputDir, options, this.outputStructure);
     } else {
       return this.convertPostNested(post, slug, outputDir, options);
     }
@@ -508,9 +555,8 @@ export class Converter extends EventEmitter {
       // Step 5: Generate frontmatter
       const frontmatter = this.frontmatterGenerator.generate(metadata);
 
-      // Step 6: Write file to {slug}.md
-      const fileWriter = new FileWriter({ outputMode: 'flat' });
-      const outputPath = await fileWriter.writePost(
+      // Step 6: Write file to {slug}.md using instance FileWriter (configured for flat mode)
+      const outputPath = await this.fileWriter.writePost(
         outputDir,
         metadata.slug,
         frontmatter,
