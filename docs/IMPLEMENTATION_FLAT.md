@@ -762,11 +762,11 @@ describe('processWithContext', () => {
 ### Phase 4: Converter Updates
 
 #### Step 4.1: Update convertPost Method
-- [ ] Read `outputStructure` from options
-- [ ] Calculate image directory based on mode (nested vs flat)
-- [ ] Create image directory before processing
-- [ ] Use `processWithContext()` for flat mode
-- [ ] Create FileWriter with appropriate `outputMode`
+- [x] Read `outputStructure` from options
+- [x] Calculate image directory based on mode (nested vs flat)
+- [x] Create image directory before processing
+- [x] Use `processWithContext()` for flat mode
+- [x] Create FileWriter with appropriate `outputMode`
 
 **Proposed Changes to `src/converter.ts` `convertPost` method (around line 375-455):**
 

@@ -10,7 +10,7 @@ import { FileWriter } from './services/file-writer.js';
 import { Logger } from './services/logger.js';
 
 import type { HashnodePost, HashnodeExport } from './types/hashnode-schema.js';
-import type { ConversionOptions } from './types/converter-options.js';
+import type { ConversionOptions, OutputStructure, ConverterConfig } from './types/converter-options.js';
 import type { ConversionResult, ConvertedPost, ConversionError } from './types/conversion-result.js';
 import type {
   ConverterEventMap,
@@ -30,6 +30,12 @@ export interface ConverterDependencies {
   frontmatterGenerator?: FrontmatterGenerator;
   fileWriter?: FileWriter;
   logger?: Logger;
+
+  /**
+   * Instance-level configuration (output structure, etc.)
+   * Separate from runtime ConversionOptions
+   */
+  config?: ConverterConfig;
 }
 
 /**
@@ -69,12 +75,37 @@ export interface ConverterDependencies {
  * ```
  */
 export class Converter extends EventEmitter {
+  /**
+   * Default dependencies used when not provided via dependency injection.
+   * Follows the same pattern as FileWriter.DEFAULTS for consistency.
+   */
+  private static readonly DEFAULTS: Required<Omit<ConverterDependencies, 'logger' | 'config'>> = {
+    postParser: new PostParser(),
+    markdownTransformer: new MarkdownTransformer(),
+    imageProcessor: new ImageProcessor(),
+    frontmatterGenerator: new FrontmatterGenerator(),
+    fileWriter: new FileWriter(),
+  };
+
+  /**
+   * Default configuration when not provided.
+   */
+  private static readonly DEFAULT_CONFIG: Required<ConverterConfig> = {
+    outputStructure: { mode: 'nested' },
+  };
+
   private postParser: PostParser;
   private markdownTransformer: MarkdownTransformer;
   private imageProcessor: ImageProcessor;
   private frontmatterGenerator: FrontmatterGenerator;
   private fileWriter: FileWriter;
   private logger: Logger | null = null;
+
+  /**
+   * Output structure configuration set at instance creation.
+   * Determines file naming and image storage location.
+   */
+  private readonly outputStructure: OutputStructure;
 
   /**
    * Create a new Converter instance.
@@ -84,17 +115,33 @@ export class Converter extends EventEmitter {
   constructor(deps?: ConverterDependencies) {
     super();
 
-    // Initialize processors and services (use injected or create new)
-    this.postParser = deps?.postParser ?? new PostParser();
-    this.markdownTransformer = deps?.markdownTransformer ?? new MarkdownTransformer();
-    this.imageProcessor = deps?.imageProcessor ?? new ImageProcessor();
-    this.frontmatterGenerator = deps?.frontmatterGenerator ?? new FrontmatterGenerator();
-    this.fileWriter = deps?.fileWriter ?? new FileWriter();
+    // Resolve config with defaults
+    const config = { ...Converter.DEFAULT_CONFIG, ...deps?.config };
+    this.outputStructure = config.outputStructure;
 
-    // Logger is initialized per-conversion in convertAllPosts
-    // to allow fresh timestamp and configuration
-    if (deps?.logger) {
-      this.logger = deps.logger;
+    // Determine output mode based on config
+    const outputMode = this.outputStructure.mode === 'flat' ? 'flat' : 'nested';
+
+    // Resolve dependencies with defaults
+    // Special handling for FileWriter: create with correct outputMode if not provided
+    const defaultFileWriter = new FileWriter({ outputMode });
+    const resolved = {
+      ...Converter.DEFAULTS,
+      fileWriter: defaultFileWriter, // Override DEFAULTS.fileWriter with mode-specific one
+      ...deps, // User-provided deps override everything
+    };
+
+    // Assign resolved dependencies
+    this.postParser = resolved.postParser;
+    this.markdownTransformer = resolved.markdownTransformer;
+    this.imageProcessor = resolved.imageProcessor;
+    this.frontmatterGenerator = resolved.frontmatterGenerator;
+    this.fileWriter = resolved.fileWriter;
+
+    // Logger is optional (can be null)
+    // Initialized per-conversion in convertAllPosts to allow fresh timestamp and configuration
+    if (resolved.logger) {
+      this.logger = resolved.logger;
     }
   }
 
@@ -127,9 +174,10 @@ export class Converter extends EventEmitter {
   static async fromExportFile(
     exportPath: string,
     outputDir: string,
-    options?: ConversionOptions
+    options?: ConversionOptions,
+    config?: ConverterConfig
   ): Promise<ConversionResult> {
-    const converter = new Converter();
+    const converter = new Converter({ config });
     return converter.convertAllPosts(exportPath, outputDir, options);
   }
 
@@ -379,6 +427,26 @@ export class Converter extends EventEmitter {
   ): Promise<ConvertedPost> {
     const slug = this.extractSlugSafely(post, 0);
 
+    // Route to appropriate handler based on instance-level output mode
+    if (this.outputStructure.mode === 'flat') {
+      return this.convertPostFlat(post, slug, outputDir, options, this.outputStructure);
+    } else {
+      return this.convertPostNested(post, slug, outputDir, options);
+    }
+  }
+
+  /**
+   * Convert a single post using nested output mode.
+   * Creates {slug}/index.md with images in the same directory.
+   *
+   * @private
+   */
+  private async convertPostNested(
+    post: HashnodePost,
+    slug: string,
+    outputDir: string,
+    options?: ConversionOptions
+  ): Promise<ConvertedPost> {
     try {
       // Step 1: Parse post metadata
       const metadata = this.postParser.parse(post);
@@ -386,19 +454,23 @@ export class Converter extends EventEmitter {
       // Step 2: Transform markdown (remove Hashnode quirks)
       const transformedMarkdown = this.markdownTransformer.transform(metadata.contentMarkdown);
 
-      // Step 3: Create post directory (required by ImageProcessor)
-      const postDir = path.join(outputDir, metadata.slug);
-      if (!fs.existsSync(postDir)) {
-        fs.mkdirSync(postDir, { recursive: true });
+      // Step 3: Create post directory for images
+      const imageDir = path.join(outputDir, metadata.slug);
+      if (!fs.existsSync(imageDir)) {
+        fs.mkdirSync(imageDir, { recursive: true });
       }
 
       // Step 4: Process images (download and replace URLs)
+      // Note: Creating a new ImageProcessor with custom downloadOptions is safe because
+      // download state is persisted via .downloaded-markers/ files on disk, not in-memory.
+      // A new instance will read existing markers and skip already-downloaded images.
+      // Custom options only affect retry behavior for new/failed downloads.
       const imageProcessor =
         options?.downloadOptions
           ? new ImageProcessor(options.downloadOptions)
           : this.imageProcessor;
 
-      const imageResult = await imageProcessor.process(transformedMarkdown, postDir);
+      const imageResult = await imageProcessor.process(transformedMarkdown, imageDir);
 
       // Emit image-downloaded events
       this.emitImageDownloadedEvents(imageResult, metadata.slug);
@@ -409,7 +481,7 @@ export class Converter extends EventEmitter {
       // Step 5: Generate frontmatter
       const frontmatter = this.frontmatterGenerator.generate(metadata);
 
-      // Step 6: Write file
+      // Step 6: Write file to {slug}/index.md
       const outputPath = await this.fileWriter.writePost(
         outputDir,
         metadata.slug,
@@ -424,34 +496,125 @@ export class Converter extends EventEmitter {
         success: true,
       };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      return this.handleConversionError(error, slug, post);
+    }
+  }
 
-      // Determine error type based on error source
-      let errorType: ConversionErrorEvent['type'] = 'fatal';
-      if (errorMessage.includes('Parse error') || errorMessage.includes('Missing required field')) {
-        errorType = 'parse';
-      } else if (errorMessage.includes('Transform error')) {
-        errorType = 'transform';
-      } else if (errorMessage.includes('Failed to write') || errorMessage.includes('create directory')) {
-        errorType = 'write';
+  /**
+   * Convert a single post using flat output mode.
+   * Creates {slug}.md with images in a shared sibling directory.
+   *
+   * @private
+   */
+  private async convertPostFlat(
+    post: HashnodePost,
+    slug: string,
+    outputDir: string,
+    options: ConversionOptions | undefined,
+    outputStructure: OutputStructure
+  ): Promise<ConvertedPost> {
+    try {
+      // Step 1: Parse post metadata
+      const metadata = this.postParser.parse(post);
+
+      // Step 2: Transform markdown (remove Hashnode quirks)
+      const transformedMarkdown = this.markdownTransformer.transform(metadata.contentMarkdown);
+
+      // Step 3: Determine shared image directory
+      const parentDir = path.dirname(outputDir);
+      const imageFolderName = outputStructure.imageFolderName ?? '_images';
+      const imageDir = path.join(parentDir, imageFolderName);
+      const imagePathPrefix = outputStructure.imagePathPrefix ?? '/images';
+
+      // Create shared image directory if it doesn't exist
+      if (!fs.existsSync(imageDir)) {
+        fs.mkdirSync(imageDir, { recursive: true });
       }
 
-      // Emit error event
-      const errorEvent: ConversionErrorEvent = {
-        type: errorType,
-        slug,
-        message: errorMessage,
-      };
-      this.emit('conversion-error', errorEvent);
+      // Step 4: Process images (download and replace URLs)
+      // Note: Creating a new ImageProcessor with custom downloadOptions is safe because
+      // download state is persisted via .downloaded-markers/ files on disk, not in-memory.
+      // A new instance will read existing markers and skip already-downloaded images.
+      // Custom options only affect retry behavior for new/failed downloads.
+      const imageProcessor =
+        options?.downloadOptions
+          ? new ImageProcessor(options.downloadOptions)
+          : this.imageProcessor;
+
+      const imageResult = await imageProcessor.processWithContext(transformedMarkdown, {
+        imageDir,
+        imagePathPrefix,
+      });
+
+      // Emit image-downloaded events
+      this.emitImageDownloadedEvents(imageResult, metadata.slug);
+
+      // Track HTTP 403 errors with Logger
+      this.trackHttp403Errors(imageResult.errors, metadata.slug);
+
+      // Step 5: Generate frontmatter
+      const frontmatter = this.frontmatterGenerator.generate(metadata);
+
+      // Step 6: Write file to {slug}.md using instance FileWriter (configured for flat mode)
+      const outputPath = await this.fileWriter.writePost(
+        outputDir,
+        metadata.slug,
+        frontmatter,
+        imageResult.markdown
+      );
 
       return {
-        slug,
-        title: post.title || slug,
-        outputPath: '',
-        success: false,
-        error: errorMessage,
+        slug: metadata.slug,
+        title: metadata.title,
+        outputPath,
+        success: true,
       };
+    } catch (error) {
+      return this.handleConversionError(error, slug, post);
     }
+  }
+
+  /**
+   * Handle conversion errors consistently across both modes.
+   *
+   * @private
+   */
+  private handleConversionError(
+    error: unknown,
+    slug: string,
+    post: HashnodePost
+  ): ConvertedPost {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+
+    // Determine error type based on error source
+    let errorType: ConversionErrorEvent['type'] = 'fatal';
+    if (errorMessage.includes('Parse error') || errorMessage.includes('Missing required field')) {
+      errorType = 'parse';
+    } else if (errorMessage.includes('Transform error')) {
+      errorType = 'transform';
+    } else if (
+      errorMessage.includes('Failed to write') ||
+      errorMessage.includes('create directory') ||
+      errorMessage.includes('Image directory does not exist')
+    ) {
+      errorType = 'write';
+    }
+
+    // Emit error event
+    const errorEvent: ConversionErrorEvent = {
+      type: errorType,
+      slug,
+      message: errorMessage,
+    };
+    this.emit('conversion-error', errorEvent);
+
+    return {
+      slug,
+      title: post.title || slug,
+      outputPath: '',
+      success: false,
+      error: errorMessage,
+    };
   }
 
   // ==================== Private Helper Methods ====================
