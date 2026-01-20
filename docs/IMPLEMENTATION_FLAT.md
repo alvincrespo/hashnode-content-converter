@@ -215,9 +215,9 @@ src/
 ### Phase 1: Type Definitions
 
 #### Step 1.1: Add OutputStructure Interface
-- [ ] Create `OutputStructure` interface in `src/types/converter-options.ts`
-- [ ] Add `outputStructure` field to `ConversionOptions` interface
-- [ ] Export new types from `src/index.ts`
+- [x] Create `OutputStructure` interface in `src/types/converter-options.ts`
+- [x] Add `outputStructure` field to `ConverterConfig` interface
+- [x] Export new types from `src/index.ts`
 
 **Proposed Changes to `src/types/converter-options.ts`:**
 
@@ -273,8 +273,8 @@ export interface ConversionOptions {
 ```
 
 #### Step 1.2: Add ImageProcessorContext Interface
-- [ ] Create `ImageProcessorContext` interface in `src/types/image-processor.ts`
-- [ ] Export from `src/index.ts`
+- [x] Create `ImageProcessorContext` interface in `src/types/image-processor.ts`
+- [x] Export from `src/index.ts`
 
 **New File: `src/types/image-processor.ts`:**
 
@@ -378,10 +378,10 @@ postExists(outputDir: string, slug: string): boolean {
 ```
 
 #### Step 2.3: Update writePost Method
-- [ ] Write to `{slug}.md` in flat mode
-- [ ] Write to `{slug}/index.md` in nested mode (current behavior)
-- [ ] Ensure output directory exists (but don't create subdirectory in flat mode)
-- [ ] Add unit tests for flat mode file writing
+- [x] Write to `{slug}.md` in flat mode
+- [x] Write to `{slug}/index.md` in nested mode (current behavior)
+- [x] Ensure output directory exists (but don't create subdirectory in flat mode)
+- [x] Add unit tests for flat mode file writing
 
 **Proposed Changes to `writePost` method (lines 203-244):**
 
@@ -762,11 +762,11 @@ describe('processWithContext', () => {
 ### Phase 4: Converter Updates
 
 #### Step 4.1: Update convertPost Method
-- [ ] Read `outputStructure` from options
-- [ ] Calculate image directory based on mode (nested vs flat)
-- [ ] Create image directory before processing
-- [ ] Use `processWithContext()` for flat mode
-- [ ] Create FileWriter with appropriate `outputMode`
+- [x] Read `outputStructure` from options
+- [x] Calculate image directory based on mode (nested vs flat)
+- [x] Create image directory before processing
+- [x] Use `processWithContext()` for flat mode
+- [x] Create FileWriter with appropriate `outputMode`
 
 **Proposed Changes to `src/converter.ts` `convertPost` method (around line 375-455):**
 
