@@ -45,6 +45,49 @@ export interface LoggerConfig {
 }
 
 /**
+ * Output structure configuration for the conversion process.
+ * Controls how posts and images are organized on disk.
+ */
+export interface OutputStructure {
+  /**
+   * Output mode determines file organization:
+   * - 'nested': Creates {slug}/index.md with images in same directory (default)
+   * - 'flat': Creates {slug}.md with images in shared sibling directory
+   * @default 'nested'
+   */
+  mode: 'nested' | 'flat';
+
+  /**
+   * Name of the shared image folder (flat mode only).
+   * Created as a sibling to the output directory.
+   * @default '_images'
+   * @example 'assets' -> creates {output}/../assets/
+   */
+  imageFolderName?: string;
+
+  /**
+   * Path prefix for image references in markdown (flat mode only).
+   * Should match your static site generator's asset path configuration.
+   * @default '/images'
+   * @example '/assets/images' -> ![alt](/assets/images/filename.png)
+   */
+  imagePathPrefix?: string;
+}
+
+/**
+ * Instance-level configuration for Converter.
+ * These settings apply to all conversions performed by this instance.
+ */
+export interface ConverterConfig {
+  /**
+   * Output structure configuration.
+   * Controls file naming and image storage location.
+   * @default { mode: 'nested' }
+   */
+  outputStructure?: OutputStructure;
+}
+
+/**
  * Configuration options for the conversion process
  */
 export interface ConversionOptions {

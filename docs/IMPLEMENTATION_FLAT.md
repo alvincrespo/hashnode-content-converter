@@ -215,9 +215,9 @@ src/
 ### Phase 1: Type Definitions
 
 #### Step 1.1: Add OutputStructure Interface
-- [ ] Create `OutputStructure` interface in `src/types/converter-options.ts`
-- [ ] Add `outputStructure` field to `ConversionOptions` interface
-- [ ] Export new types from `src/index.ts`
+- [x] Create `OutputStructure` interface in `src/types/converter-options.ts`
+- [x] Add `outputStructure` field to `ConverterConfig` interface
+- [x] Export new types from `src/index.ts`
 
 **Proposed Changes to `src/types/converter-options.ts`:**
 
@@ -273,8 +273,8 @@ export interface ConversionOptions {
 ```
 
 #### Step 1.2: Add ImageProcessorContext Interface
-- [ ] Create `ImageProcessorContext` interface in `src/types/image-processor.ts`
-- [ ] Export from `src/index.ts`
+- [x] Create `ImageProcessorContext` interface in `src/types/image-processor.ts`
+- [x] Export from `src/index.ts`
 
 **New File: `src/types/image-processor.ts`:**
 
@@ -311,9 +311,9 @@ export interface ImageProcessorContext {
 ### Phase 2: FileWriter Service Updates
 
 #### Step 2.1: Add outputMode Configuration
-- [ ] Add `outputMode` to `FileWriterConfig` interface
-- [ ] Store output mode in class property
-- [ ] Update constructor to accept new config
+- [x] Add `outputMode` to `FileWriterConfig` interface
+- [x] Store output mode in class property
+- [x] Update constructor to accept new config
 
 **Proposed Changes to `src/services/file-writer.ts`:**
 
@@ -346,9 +346,9 @@ constructor(config?: FileWriterConfig) {
 ```
 
 #### Step 2.2: Update postExists Method
-- [ ] Check for `{slug}.md` file in flat mode
-- [ ] Check for `{slug}/` directory in nested mode (current behavior)
-- [ ] Add unit tests for flat mode existence check
+- [x] Check for `{slug}.md` file in flat mode
+- [x] Check for `{slug}/` directory in nested mode (current behavior)
+- [x] Add unit tests for flat mode existence check
 
 **Proposed Changes to `postExists` method (lines 183-192):**
 
@@ -378,10 +378,10 @@ postExists(outputDir: string, slug: string): boolean {
 ```
 
 #### Step 2.3: Update writePost Method
-- [ ] Write to `{slug}.md` in flat mode
-- [ ] Write to `{slug}/index.md` in nested mode (current behavior)
-- [ ] Ensure output directory exists (but don't create subdirectory in flat mode)
-- [ ] Add unit tests for flat mode file writing
+- [x] Write to `{slug}.md` in flat mode
+- [x] Write to `{slug}/index.md` in nested mode (current behavior)
+- [x] Ensure output directory exists (but don't create subdirectory in flat mode)
+- [x] Add unit tests for flat mode file writing
 
 **Proposed Changes to `writePost` method (lines 203-244):**
 
@@ -458,11 +458,11 @@ async writePost(
 ```
 
 #### Step 2.4: Write FileWriter Unit Tests
-- [ ] Test `postExists()` returns true when `{slug}.md` exists in flat mode
-- [ ] Test `postExists()` returns false when `{slug}.md` does not exist in flat mode
-- [ ] Test `writePost()` creates `{slug}.md` in flat mode (no subdirectory)
-- [ ] Test `writePost()` creates output directory if missing in flat mode
-- [ ] Test nested mode behavior remains unchanged
+- [x] Test `postExists()` returns true when `{slug}.md` exists in flat mode
+- [x] Test `postExists()` returns false when `{slug}.md` does not exist in flat mode
+- [x] Test `writePost()` creates `{slug}.md` in flat mode (no subdirectory)
+- [x] Test `writePost()` creates output directory if missing in flat mode
+- [x] Test nested mode behavior remains unchanged
 
 **Test Cases for `tests/unit/services/file-writer.test.ts`:**
 
@@ -516,10 +516,10 @@ describe('Flat Output Mode', () => {
 ### Phase 3: ImageProcessor Updates
 
 #### Step 3.1: Add processWithContext Method
-- [ ] Create new `processWithContext()` method that accepts `ImageProcessorContext`
-- [ ] Use provided `imageDir` for downloads instead of inferring from blogDir
-- [ ] Use provided `imagePathPrefix` for markdown URL replacement
-- [ ] Keep existing `process()` method for backwards compatibility
+- [x] Create new `processWithContext()` method that accepts `ImageProcessorContext`
+- [x] Use provided `imageDir` for downloads instead of inferring from blogDir
+- [x] Use provided `imagePathPrefix` for markdown URL replacement
+- [x] Keep existing `process()` method for backwards compatibility
 
 **Proposed Changes to `src/processors/image-processor.ts`:**
 
@@ -675,12 +675,14 @@ private recordDownloadFailureForDir(
 ```
 
 #### Step 3.2: Write ImageProcessor Unit Tests
-- [ ] Test `processWithContext` uses provided `imageDir`
-- [ ] Test `processWithContext` uses provided `imagePathPrefix`
-- [ ] Test marker files created in shared directory
-- [ ] Test path prefix with trailing slash
-- [ ] Test path prefix without trailing slash
-- [ ] Test existing `process()` method unchanged
+- [x] Test `processWithContext` uses provided `imageDir` (Written in Step 3.1)
+- [x] Test `processWithContext` uses provided `imagePathPrefix` (Written in Step 3.1)
+- [x] Test marker files created in shared directory (Written in Step 3.1)
+- [x] Test path prefix with trailing slash (Written in Step 3.1)
+- [x] Test path prefix without trailing slash (Written in Step 3.1)
+- [x] Test existing `process()` method unchanged (Written in Step 3.1)
+
+**Status**: ✅ COMPLETE - All tests were written during Step 3.1 implementation (78 tests, 99.46% coverage)
 
 **Test Cases for `tests/unit/processors/image-processor.test.ts`:**
 
@@ -760,11 +762,11 @@ describe('processWithContext', () => {
 ### Phase 4: Converter Updates
 
 #### Step 4.1: Update convertPost Method
-- [ ] Read `outputStructure` from options
-- [ ] Calculate image directory based on mode (nested vs flat)
-- [ ] Create image directory before processing
-- [ ] Use `processWithContext()` for flat mode
-- [ ] Create FileWriter with appropriate `outputMode`
+- [x] Read `outputStructure` from options
+- [x] Calculate image directory based on mode (nested vs flat)
+- [x] Create image directory before processing
+- [x] Use `processWithContext()` for flat mode
+- [x] Create FileWriter with appropriate `outputMode`
 
 **Proposed Changes to `src/converter.ts` `convertPost` method (around line 375-455):**
 
