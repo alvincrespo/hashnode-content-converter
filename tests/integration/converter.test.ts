@@ -767,12 +767,12 @@ describe('Converter', () => {
         config: { outputStructure: { mode: 'flat' } },
       });
 
-      await flatConverter.convertPost(samplePost, '/output');
+      await flatConverter.convertPost(samplePost, '/blog/_posts');
 
       expect(mockImageProcessor.processWithContext).toHaveBeenCalledWith(
         '# Test Content',
         expect.objectContaining({
-          imageDir: '/_images',
+          imageDir: '/blog/_images',
           imagePathPrefix: '/images',
         })
       );
@@ -810,7 +810,7 @@ describe('Converter', () => {
         config: { outputStructure: { mode: 'flat', imagePathPrefix: '/static/img' } },
       });
 
-      await flatConverter.convertPost(samplePost, '/output');
+      await flatConverter.convertPost(samplePost, '/blog/_posts');
 
       expect(mockImageProcessor.processWithContext).toHaveBeenCalledWith(
         expect.any(String),
@@ -842,7 +842,7 @@ describe('Converter', () => {
         return true;
       });
 
-      const result = await flatConverter.convertPost(samplePost, '/output');
+      const result = await flatConverter.convertPost(samplePost, '/blog/_posts');
 
       // FileWriter configured at construction with flat mode
       expect(result.success).toBe(true);
@@ -900,13 +900,30 @@ describe('Converter', () => {
         throw new Error('Permission denied');
       });
 
-      const result = await flatConverter.convertPost(samplePost, '/output');
+      const result = await flatConverter.convertPost(samplePost, '/blog/_posts');
 
       expect(result.success).toBe(false);
       expect(result.error).toContain('Permission denied');
 
       // Restore fs.mkdirSync to default behavior for other tests
       vi.mocked(fs.mkdirSync).mockReturnValue(undefined);
+    });
+
+    it('should throw validation error for non-nested outputDir in flat mode', async () => {
+      const flatConverter = new Converter({
+        postParser: mockPostParser,
+        markdownTransformer: mockMarkdownTransformer,
+        imageProcessor: mockImageProcessor,
+        frontmatterGenerator: mockFrontmatterGenerator,
+        fileWriter: mockFileWriter,
+        config: { outputStructure: { mode: 'flat' } },
+      });
+
+      const result = await flatConverter.convertPost(samplePost, '/output');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Invalid outputDir for flat mode');
+      expect(result.error).toContain('nested directory structure');
     });
 
     it('should create new ImageProcessor with custom downloadOptions in flat mode', async () => {
@@ -939,7 +956,7 @@ describe('Converter', () => {
       // Clear the mock to ensure we can track calls
       vi.mocked(mockImageProcessor.processWithContext).mockClear();
 
-      const result = await flatConverter.convertPost(samplePost, '/output', customOptions);
+      const result = await flatConverter.convertPost(samplePost, '/blog/_posts', customOptions);
 
       // When downloadOptions is provided, a new ImageProcessor is created
       // So the injected mock should NOT be called

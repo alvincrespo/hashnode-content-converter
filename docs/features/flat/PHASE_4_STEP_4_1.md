@@ -96,11 +96,17 @@ Output: /blog/_posts/my-post/index.md
 **Flat Mode**:
 ```
 Input:  outputDir = /blog/_posts, imageFolderName = _images
+        (Note: outputDir must be nested, not at root level)
 Flow:   imageDir = /blog/_images (sibling)
         imagePathPrefix = /images
 Output: /blog/_posts/my-post.md
         /blog/_images/image.png
 ```
+
+**Requirements**:
+- outputDir must be a nested path (e.g., `/blog/_posts`, not `/posts`)
+- Ensures parent directory exists for creating sibling image folder
+- Validation error thrown if path is at filesystem root
 
 ### Implementation Strategy
 
@@ -357,6 +363,19 @@ const outputPath = await fileWriter.writePost(
 **Issue**: `imageFolderName: '../escape'` (path traversal)
 **Mitigation**: Document that `imageFolderName` should be simple folder name
 **Risk**: LOW - Developer configuration, not user input
+
+### 5. Single-Level Output Directory
+**Issue**: `outputDir = '/output'` or `'./posts'` has no valid parent for sibling
+**Solution**: Validation throws clear error requiring nested path structure
+**Example Error**:
+```
+Invalid outputDir for flat mode: "/output"
+Flat mode requires a nested directory structure (e.g., "blog/_posts")
+Suggestions:
+  - Use: "./blog/_posts" or "/path/to/blog/_posts"
+  - Avoid: "/output" (single-level paths)
+```
+**Risk**: MEDIUM - Prevented by early validation
 
 ---
 

@@ -503,6 +503,38 @@ export class Converter extends EventEmitter {
   }
 
   /**
+   * Validates that outputDir is properly nested for flat mode.
+   * Flat mode requires a nested structure (e.g., /blog/_posts) to create
+   * sibling directories (e.g., /blog/_images).
+   *
+   * @param outputDir - The output directory to validate
+   * @throws {Error} If outputDir is at root or single-level
+   * @private
+   */
+  private validateFlatModeOutputPath(outputDir: string): void {
+    const normalizedPath = path.resolve(outputDir);
+    const parentDir = path.dirname(normalizedPath);
+
+    // Check if parent is root (Unix '/' or Windows 'C:/')
+    const isAtRoot =
+      parentDir === '/' ||
+      /^[A-Z]:[/\\]?$/.test(parentDir) ||
+      parentDir === normalizedPath;
+
+    if (isAtRoot) {
+      throw new Error(
+        `Invalid outputDir for flat mode: "${outputDir}"\n` +
+          `Flat mode requires a nested directory structure (e.g., "blog/_posts") ` +
+          `to create sibling image directories (e.g., "blog/_images").\n` +
+          `Current path has no valid parent directory for sibling placement.\n` +
+          `Suggestions:\n` +
+          `  - Use: "./blog/_posts" or "/path/to/blog/_posts"\n` +
+          `  - Avoid: "/output" or "./posts" (single-level paths)`
+      );
+    }
+  }
+
+  /**
    * Convert a single post using flat output mode.
    * Creates {slug}.md with images in a shared sibling directory.
    *
@@ -515,6 +547,9 @@ export class Converter extends EventEmitter {
     options?: ConversionOptions
   ): Promise<ConvertedPost> {
     try {
+      // Validate outputDir is properly nested for flat mode
+      this.validateFlatModeOutputPath(outputDir);
+
       // Step 1: Parse post metadata
       const metadata = this.postParser.parse(post);
 
@@ -596,7 +631,8 @@ export class Converter extends EventEmitter {
     } else if (
       errorMessage.includes('Failed to write') ||
       errorMessage.includes('create directory') ||
-      errorMessage.includes('Image directory does not exist')
+      errorMessage.includes('Image directory does not exist') ||
+      errorMessage.includes('Invalid outputDir for flat mode')
     ) {
       errorType = 'write';
     }
