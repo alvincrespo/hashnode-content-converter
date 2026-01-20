@@ -718,6 +718,42 @@ describe('Converter', () => {
         '# Content with local images'
       );
     });
+
+    it('should create new ImageProcessor with custom downloadOptions in nested mode', async () => {
+      // Spy on ImageProcessor.prototype.process to verify new instance is called
+      const processSpy = vi.spyOn(ImageProcessor.prototype, 'process')
+        .mockResolvedValue({
+          markdown: '# Test Content',
+          imagesProcessed: 0,
+          imagesDownloaded: 0,
+          imagesSkipped: 0,
+          errors: [],
+        });
+
+      const customOptions = {
+        downloadOptions: {
+          maxRetries: 5,
+          downloadDelayMs: 200,
+        },
+      };
+
+      // Clear the mock to ensure we can track calls
+      vi.mocked(mockImageProcessor.process).mockClear();
+
+      const result = await converter.convertPost(samplePost, '/output', customOptions);
+
+      // When downloadOptions is provided, a new ImageProcessor is created
+      // So the injected mock should NOT be called
+      expect(mockImageProcessor.process).not.toHaveBeenCalled();
+
+      // But the new instance's process method should be called
+      expect(processSpy).toHaveBeenCalled();
+
+      // Verify successful conversion
+      expect(result.success).toBe(true);
+
+      processSpy.mockRestore();
+    });
   });
 
   describe('convertPost - Flat Output Mode', () => {
@@ -871,6 +907,51 @@ describe('Converter', () => {
 
       // Restore fs.mkdirSync to default behavior for other tests
       vi.mocked(fs.mkdirSync).mockReturnValue(undefined);
+    });
+
+    it('should create new ImageProcessor with custom downloadOptions in flat mode', async () => {
+      const flatConverter = new Converter({
+        postParser: mockPostParser,
+        markdownTransformer: mockMarkdownTransformer,
+        imageProcessor: mockImageProcessor,
+        frontmatterGenerator: mockFrontmatterGenerator,
+        fileWriter: mockFileWriter,
+        config: { outputStructure: { mode: 'flat' } },
+      });
+
+      // Spy on ImageProcessor constructor to verify new instance is created
+      const constructorSpy = vi.spyOn(ImageProcessor.prototype, 'processWithContext')
+        .mockResolvedValue({
+          markdown: '# Test Content',
+          imagesProcessed: 0,
+          imagesDownloaded: 0,
+          imagesSkipped: 0,
+          errors: [],
+        });
+
+      const customOptions = {
+        downloadOptions: {
+          maxRetries: 5,
+          downloadDelayMs: 200,
+        },
+      };
+
+      // Clear the mock to ensure we can track calls
+      vi.mocked(mockImageProcessor.processWithContext).mockClear();
+
+      const result = await flatConverter.convertPost(samplePost, '/output', customOptions);
+
+      // When downloadOptions is provided, a new ImageProcessor is created
+      // So the injected mock should NOT be called
+      expect(mockImageProcessor.processWithContext).not.toHaveBeenCalled();
+
+      // But the new instance's processWithContext should be called
+      expect(constructorSpy).toHaveBeenCalled();
+
+      // Verify successful conversion
+      expect(result.success).toBe(true);
+
+      constructorSpy.mockRestore();
     });
   });
 
