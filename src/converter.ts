@@ -77,15 +77,17 @@ export interface ConverterDependencies {
 export class Converter extends EventEmitter {
   /**
    * Default dependencies used when not provided via dependency injection.
-   * Follows the same pattern as FileWriter.DEFAULTS for consistency.
+   * Creates fresh instances on each access to avoid shared state between Converter instances.
    */
-  private static readonly DEFAULTS: Required<Omit<ConverterDependencies, 'logger' | 'config'>> = {
-    postParser: new PostParser(),
-    markdownTransformer: new MarkdownTransformer(),
-    imageProcessor: new ImageProcessor(),
-    frontmatterGenerator: new FrontmatterGenerator(),
-    fileWriter: new FileWriter(),
-  };
+  private static get DEFAULTS(): Required<Omit<ConverterDependencies, 'logger' | 'config'>> {
+    return {
+      postParser: new PostParser(),
+      markdownTransformer: new MarkdownTransformer(),
+      imageProcessor: new ImageProcessor(),
+      frontmatterGenerator: new FrontmatterGenerator(),
+      fileWriter: new FileWriter(),
+    };
+  }
 
   /**
    * Default configuration when not provided.
