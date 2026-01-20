@@ -75,6 +75,19 @@ export interface OutputStructure {
 }
 
 /**
+ * Instance-level configuration for Converter.
+ * These settings apply to all conversions performed by this instance.
+ */
+export interface ConverterConfig {
+  /**
+   * Output structure configuration.
+   * Controls file naming and image storage location.
+   * @default { mode: 'nested' }
+   */
+  outputStructure?: OutputStructure;
+}
+
+/**
  * Configuration options for the conversion process
  */
 export interface ConversionOptions {
@@ -95,11 +108,4 @@ export interface ConversionOptions {
    * Logger configuration options.
    */
   loggerConfig?: LoggerConfig;
-
-  /**
-   * Output structure configuration.
-   * Controls file naming and image storage location.
-   * @default { mode: 'nested' }
-   */
-  outputStructure?: OutputStructure;
 }
