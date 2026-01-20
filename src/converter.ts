@@ -450,23 +450,15 @@ export class Converter extends EventEmitter {
     options?: ConversionOptions
   ): Promise<ConvertedPost> {
     try {
-      // Step 1: Parse post metadata
       const metadata = this.postParser.parse(post);
 
-      // Step 2: Transform markdown (remove Hashnode quirks)
       const transformedMarkdown = this.markdownTransformer.transform(metadata.contentMarkdown);
 
-      // Step 3: Create post directory for images
       const imageDir = path.join(outputDir, metadata.slug);
       if (!fs.existsSync(imageDir)) {
         fs.mkdirSync(imageDir, { recursive: true });
       }
 
-      // Step 4: Process images (download and replace URLs)
-      // Note: Creating a new ImageProcessor with custom downloadOptions is safe because
-      // download state is persisted via .downloaded-markers/ files on disk, not in-memory.
-      // A new instance will read existing markers and skip already-downloaded images.
-      // Custom options only affect retry behavior for new/failed downloads.
       const imageProcessor =
         options?.downloadOptions
           ? new ImageProcessor(options.downloadOptions)
@@ -474,16 +466,12 @@ export class Converter extends EventEmitter {
 
       const imageResult = await imageProcessor.process(transformedMarkdown, imageDir);
 
-      // Emit image-downloaded events
       this.emitImageDownloadedEvents(imageResult, metadata.slug);
 
-      // Track HTTP 403 errors with Logger
       this.trackHttp403Errors(imageResult.errors, metadata.slug);
 
-      // Step 5: Generate frontmatter
       const frontmatter = this.frontmatterGenerator.generate(metadata);
 
-      // Step 6: Write file to {slug}/index.md
       const outputPath = await this.fileWriter.writePost(
         outputDir,
         metadata.slug,
@@ -547,31 +535,21 @@ export class Converter extends EventEmitter {
     options?: ConversionOptions
   ): Promise<ConvertedPost> {
     try {
-      // Validate outputDir is properly nested for flat mode
       this.validateFlatModeOutputPath(outputDir);
 
-      // Step 1: Parse post metadata
       const metadata = this.postParser.parse(post);
 
-      // Step 2: Transform markdown (remove Hashnode quirks)
       const transformedMarkdown = this.markdownTransformer.transform(metadata.contentMarkdown);
 
-      // Step 3: Determine shared image directory
       const parentDir = path.dirname(outputDir);
       const imageFolderName = this.outputStructure.imageFolderName ?? '_images';
       const imageDir = path.join(parentDir, imageFolderName);
       const imagePathPrefix = this.outputStructure.imagePathPrefix ?? '/images';
 
-      // Create shared image directory if it doesn't exist
       if (!fs.existsSync(imageDir)) {
         fs.mkdirSync(imageDir, { recursive: true });
       }
 
-      // Step 4: Process images (download and replace URLs)
-      // Note: Creating a new ImageProcessor with custom downloadOptions is safe because
-      // download state is persisted via .downloaded-markers/ files on disk, not in-memory.
-      // A new instance will read existing markers and skip already-downloaded images.
-      // Custom options only affect retry behavior for new/failed downloads.
       const imageProcessor =
         options?.downloadOptions
           ? new ImageProcessor(options.downloadOptions)
@@ -582,16 +560,12 @@ export class Converter extends EventEmitter {
         imagePathPrefix,
       });
 
-      // Emit image-downloaded events
       this.emitImageDownloadedEvents(imageResult, metadata.slug);
 
-      // Track HTTP 403 errors with Logger
       this.trackHttp403Errors(imageResult.errors, metadata.slug);
 
-      // Step 5: Generate frontmatter
       const frontmatter = this.frontmatterGenerator.generate(metadata);
 
-      // Step 6: Write file to {slug}.md using instance FileWriter (configured for flat mode)
       const outputPath = await this.fileWriter.writePost(
         outputDir,
         metadata.slug,
