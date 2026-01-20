@@ -125,11 +125,13 @@ export class Converter extends EventEmitter {
     const outputMode = this.outputStructure.mode === 'flat' ? 'flat' : 'nested';
 
     // Resolve dependencies with defaults
-    // Special handling for FileWriter: create with correct outputMode if not provided
+    // FileWriter is configured once at construction with the instance's output mode.
+    // This single instance is used for all conversions, ensuring consistent file naming
+    // (flat: slug.md, nested: slug/index.md) throughout the instance's lifetime.
     const defaultFileWriter = new FileWriter({ outputMode });
     const resolved = {
       ...Converter.DEFAULTS,
-      fileWriter: defaultFileWriter, // Override DEFAULTS.fileWriter with mode-specific one
+      fileWriter: defaultFileWriter,
       ...deps, // User-provided deps override everything
     };
 
