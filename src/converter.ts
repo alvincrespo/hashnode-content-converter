@@ -429,7 +429,7 @@ export class Converter extends EventEmitter {
 
     // Route to appropriate handler based on instance-level output mode
     if (this.outputStructure.mode === 'flat') {
-      return this.convertPostFlat(post, slug, outputDir, options, this.outputStructure);
+      return this.convertPostFlat(post, slug, outputDir, options);
     } else {
       return this.convertPostNested(post, slug, outputDir, options);
     }
@@ -510,8 +510,7 @@ export class Converter extends EventEmitter {
     post: HashnodePost,
     slug: string,
     outputDir: string,
-    options: ConversionOptions | undefined,
-    outputStructure: OutputStructure
+    options?: ConversionOptions
   ): Promise<ConvertedPost> {
     try {
       // Step 1: Parse post metadata
@@ -522,9 +521,9 @@ export class Converter extends EventEmitter {
 
       // Step 3: Determine shared image directory
       const parentDir = path.dirname(outputDir);
-      const imageFolderName = outputStructure.imageFolderName ?? '_images';
+      const imageFolderName = this.outputStructure.imageFolderName ?? '_images';
       const imageDir = path.join(parentDir, imageFolderName);
-      const imagePathPrefix = outputStructure.imagePathPrefix ?? '/images';
+      const imagePathPrefix = this.outputStructure.imagePathPrefix ?? '/images';
 
       // Create shared image directory if it doesn't exist
       if (!fs.existsSync(imageDir)) {
