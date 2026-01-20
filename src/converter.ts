@@ -9,7 +9,7 @@ import { FrontmatterGenerator } from './processors/frontmatter-generator.js';
 import { FileWriter } from './services/file-writer.js';
 import { Logger } from './services/logger.js';
 
-import type { HashnodePost, HashnodeExport } from './types/hashnode-schema.js';
+import type { HashnodePost, HashnodeExport, PostMetadata } from './types/hashnode-schema.js';
 import type { ConversionOptions, OutputStructure, ConverterConfig } from './types/converter-options.js';
 import type { ConversionResult, ConvertedPost, ConversionError } from './types/conversion-result.js';
 import type {
@@ -19,6 +19,7 @@ import type {
   ImageDownloadedEvent,
   ConversionErrorEvent,
 } from './types/converter-events.js';
+import type { ImageProcessingResult } from './types/image-processor.js';
 
 /**
  * Optional dependencies for testing via dependency injection
@@ -440,6 +441,103 @@ export class Converter extends EventEmitter {
   }
 
   /**
+   * Parse post metadata and transform markdown content.
+   * First step in the conversion pipeline.
+   *
+   * @param post - The Hashnode post to process
+   * @returns Parsed metadata and transformed markdown
+   */
+  private parseAndTransform(post: HashnodePost): {
+    metadata: PostMetadata;
+    transformedMarkdown: string;
+  } {
+    const metadata = this.postParser.parse(post);
+    const transformedMarkdown = this.markdownTransformer.transform(metadata.contentMarkdown);
+    return { metadata, transformedMarkdown };
+  }
+
+  /**
+   * Create an ImageProcessor instance based on conversion options.
+   * When custom downloadOptions are provided, creates a new instance.
+   * Otherwise, uses the instance's default ImageProcessor.
+   *
+   * Note: Creating new instances is safe because download state is persisted
+   * via .downloaded-markers/ files on disk, not in-memory. Custom options
+   * only affect retry behavior for new/failed downloads.
+   *
+   * @param options - Conversion options that may include downloadOptions
+   * @returns ImageProcessor instance (new or default)
+   */
+  private createImageProcessor(options?: ConversionOptions): ImageProcessor {
+    return options?.downloadOptions
+      ? new ImageProcessor(options.downloadOptions)
+      : this.imageProcessor;
+  }
+
+  /**
+   * Ensure a directory exists, creating it if necessary.
+   * Creates parent directories recursively as needed.
+   *
+   * @param dir - Directory path to ensure exists
+   */
+  private ensureDirectoryExists(dir: string): void {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+  }
+
+  /**
+   * Process image result metadata: emit events and track errors.
+   * This should be called after image processing completes.
+   *
+   * @param imageResult - Result from image processing
+   * @param slug - Post slug for event identification
+   */
+  private processImageResult(imageResult: ImageProcessingResult, slug: string): void {
+    this.emitImageDownloadedEvents(imageResult, slug);
+    this.trackHttp403Errors(imageResult.errors, slug);
+  }
+
+  /**
+   * Write the final markdown file with frontmatter and content.
+   * The FileWriter instance determines the output structure (flat vs nested).
+   *
+   * @param metadata - Post metadata for slug and title
+   * @param outputDir - Output directory
+   * @param imageResult - Processed markdown with localized images
+   * @returns Path to the written file
+   */
+  private async writeMarkdownFile(
+    metadata: PostMetadata,
+    outputDir: string,
+    imageResult: ImageProcessingResult
+  ): Promise<string> {
+    const frontmatter = this.frontmatterGenerator.generate(metadata);
+    return await this.fileWriter.writePost(
+      outputDir,
+      metadata.slug,
+      frontmatter,
+      imageResult.markdown
+    );
+  }
+
+  /**
+   * Create a successful conversion result.
+   *
+   * @param metadata - Post metadata
+   * @param outputPath - Path where the file was written
+   * @returns Success result object
+   */
+  private createSuccessResult(metadata: PostMetadata, outputPath: string): ConvertedPost {
+    return {
+      slug: metadata.slug,
+      title: metadata.title,
+      outputPath,
+      success: true,
+    };
+  }
+
+  /**
    * Convert a single post using nested output mode.
    * Creates {slug}/index.md with images in the same directory.
    *
@@ -452,41 +550,23 @@ export class Converter extends EventEmitter {
     options?: ConversionOptions
   ): Promise<ConvertedPost> {
     try {
-      const metadata = this.postParser.parse(post);
+      // Parse and transform content
+      const { metadata, transformedMarkdown } = this.parseAndTransform(post);
 
-      const transformedMarkdown = this.markdownTransformer.transform(metadata.contentMarkdown);
-
+      // Set up nested structure: outputDir/slug/
       const imageDir = path.join(outputDir, metadata.slug);
-      if (!fs.existsSync(imageDir)) {
-        fs.mkdirSync(imageDir, { recursive: true });
-      }
+      this.ensureDirectoryExists(imageDir);
 
-      const imageProcessor =
-        options?.downloadOptions
-          ? new ImageProcessor(options.downloadOptions)
-          : this.imageProcessor;
-
+      // Process images with nested structure
+      const imageProcessor = this.createImageProcessor(options);
       const imageResult = await imageProcessor.process(transformedMarkdown, imageDir);
 
-      this.emitImageDownloadedEvents(imageResult, metadata.slug);
+      // Emit events and track errors
+      this.processImageResult(imageResult, metadata.slug);
 
-      this.trackHttp403Errors(imageResult.errors, metadata.slug);
-
-      const frontmatter = this.frontmatterGenerator.generate(metadata);
-
-      const outputPath = await this.fileWriter.writePost(
-        outputDir,
-        metadata.slug,
-        frontmatter,
-        imageResult.markdown
-      );
-
-      return {
-        slug: metadata.slug,
-        title: metadata.title,
-        outputPath,
-        success: true,
-      };
+      // Write file and return success
+      const outputPath = await this.writeMarkdownFile(metadata, outputDir, imageResult);
+      return this.createSuccessResult(metadata, outputPath);
     } catch (error) {
       return this.handleConversionError(error, slug, post);
     }
@@ -537,50 +617,32 @@ export class Converter extends EventEmitter {
     options?: ConversionOptions
   ): Promise<ConvertedPost> {
     try {
+      // Validate flat mode requirements
       this.validateFlatModeOutputPath(outputDir);
 
-      const metadata = this.postParser.parse(post);
+      // Parse and transform content
+      const { metadata, transformedMarkdown } = this.parseAndTransform(post);
 
-      const transformedMarkdown = this.markdownTransformer.transform(metadata.contentMarkdown);
-
+      // Set up flat structure: sibling image directory
       const parentDir = path.dirname(outputDir);
       const imageFolderName = this.outputStructure.imageFolderName ?? '_images';
       const imageDir = path.join(parentDir, imageFolderName);
       const imagePathPrefix = this.outputStructure.imagePathPrefix ?? '/images';
+      this.ensureDirectoryExists(imageDir);
 
-      if (!fs.existsSync(imageDir)) {
-        fs.mkdirSync(imageDir, { recursive: true });
-      }
-
-      const imageProcessor =
-        options?.downloadOptions
-          ? new ImageProcessor(options.downloadOptions)
-          : this.imageProcessor;
-
+      // Process images with flat structure and custom path prefix
+      const imageProcessor = this.createImageProcessor(options);
       const imageResult = await imageProcessor.processWithContext(transformedMarkdown, {
         imageDir,
         imagePathPrefix,
       });
 
-      this.emitImageDownloadedEvents(imageResult, metadata.slug);
+      // Emit events and track errors
+      this.processImageResult(imageResult, metadata.slug);
 
-      this.trackHttp403Errors(imageResult.errors, metadata.slug);
-
-      const frontmatter = this.frontmatterGenerator.generate(metadata);
-
-      const outputPath = await this.fileWriter.writePost(
-        outputDir,
-        metadata.slug,
-        frontmatter,
-        imageResult.markdown
-      );
-
-      return {
-        slug: metadata.slug,
-        title: metadata.title,
-        outputPath,
-        success: true,
-      };
+      // Write file and return success
+      const outputPath = await this.writeMarkdownFile(metadata, outputDir, imageResult);
+      return this.createSuccessResult(metadata, outputPath);
     } catch (error) {
       return this.handleConversionError(error, slug, post);
     }
