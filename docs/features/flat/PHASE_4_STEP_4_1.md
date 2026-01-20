@@ -9,9 +9,9 @@
 
 ## Overview
 
-Update the `Converter.convertPost` method to support flat output mode by reading `outputStructure` from options and routing to appropriate processing methods. This enables the converter to write posts as `{slug}.md` files with images in a shared sibling directory, instead of the current nested `{slug}/index.md` structure.
+Update the `Converter.convertPost` method to support flat output mode by using instance-level `outputStructure` configuration and routing to appropriate processing methods. This enables the converter to write posts as `{slug}.md` files with images in a shared sibling directory, instead of the current nested `{slug}/index.md` structure.
 
-**Scope**: Modify the `convertPost` method in [src/converter.ts](src/converter.ts) (lines 375-455) to conditionally route to flat or nested mode based on `options.outputStructure`.
+**Scope**: Modify the `convertPost` method in [src/converter.ts](src/converter.ts) to conditionally route to flat or nested mode based on the instance's `outputStructure` configuration (set at construction time).
 
 ---
 
@@ -19,14 +19,14 @@ Update the `Converter.convertPost` method to support flat output mode by reading
 
 From [docs/IMPLEMENTATION_FLAT.md](docs/IMPLEMENTATION_FLAT.md) (lines 764-870):
 
-- Read `outputStructure` from options (default to nested mode for backward compatibility)
+- Use instance-level `outputStructure` configuration (set at construction via `ConverterConfig`)
 - Calculate image directory based on mode:
   - **Nested**: `{output}/{slug}/`
   - **Flat**: `{output}/../{imageFolderName}/` (default: `_images`)
 - Create image directory before processing
 - Use `processWithContext()` for flat mode (with custom `imagePathPrefix`)
 - Use existing `process()` for nested mode (backward compatible)
-- Create FileWriter with appropriate `outputMode`
+- FileWriter configured at construction with appropriate `outputMode`
 
 **Key Requirements**:
 - **99%+** test coverage maintained
@@ -54,17 +54,18 @@ convertPost()
 
 ```
 convertPost()
-├─ Extract outputStructure from options (default: nested)
-├─ Step 1: PostParser.parse(post)
-├─ Step 2: MarkdownTransformer.transform()
-├─ Step 3: Calculate imageDir & imagePathPrefix by mode  ← NEW LOGIC
-│  ├─ Flat:   imageDir = {output}/../_images, prefix = /images
-│  └─ Nested: imageDir = {output}/{slug}, prefix = .
-├─ Step 4: Route to correct ImageProcessor method        ← CONDITIONAL
-│  ├─ Flat:   processWithContext(markdown, { imageDir, imagePathPrefix })
-│  └─ Nested: process(markdown, imageDir)
-├─ Step 5: FrontmatterGenerator.generate()
-└─ Step 6: Create FileWriter with outputMode & write     ← NEW INSTANCE
+├─ Check instance's outputStructure.mode (set at construction)
+├─ Route to mode-specific method:
+│  ├─ convertPostNested() or convertPostFlat()
+│
+├─ Both methods follow shared pipeline via helper methods:
+│  ├─ parseAndTransform(): Parse metadata & transform markdown
+│  ├─ Calculate imageDir (mode-specific logic)
+│  ├─ createImageProcessor(): Get ImageProcessor instance
+│  ├─ Process images (mode-specific method: process() or processWithContext())
+│  ├─ processImageResult(): Emit events & track errors
+│  ├─ writeMarkdownFile(): Generate frontmatter & write file
+│  └─ createSuccessResult(): Return success result
 ```
 
 ### Design Patterns
@@ -74,9 +75,10 @@ convertPost()
 - **Dependency Injection**: FileWriter instantiated with correct config
 
 **Key Decisions**:
-1. **Early Mode Detection**: Extract `outputStructure` immediately after slug extraction for clear conditional logic throughout method
-2. **Instance Creation**: Create new FileWriter in flat mode only (reuse `this.fileWriter` in nested mode for efficiency)
-3. **Idempotent Directory Creation**: Use `fs.mkdirSync` with `recursive: true` for safe shared directory creation
+1. **Instance-Level Configuration**: `outputStructure` is set at construction time and stored as `this.outputStructure`, determining conversion mode for the lifetime of the Converter instance
+2. **Mode-Specific Methods**: `convertPost()` routes to `convertPostNested()` or `convertPostFlat()` based on `this.outputStructure.mode`
+3. **Shared Helper Methods**: Both conversion methods use 6 shared helper methods to eliminate duplication while maintaining mode-specific behavior
+4. **Single FileWriter Instance**: FileWriter is configured once at construction with the appropriate `outputMode`, used for all conversions throughout the instance's lifetime
 
 ---
 
@@ -110,163 +112,105 @@ Output: /blog/_posts/my-post.md
 
 ### Implementation Strategy
 
-1. **Extract configuration early** to establish mode for all subsequent logic
-2. **Calculate paths conditionally** based on mode using `path.join()` and `path.dirname()`
-3. **Route to appropriate methods** using conditional branching
-4. **Maintain type safety** with explicit type annotations (`ImageProcessingResult`)
-5. **Enhance error handling** to classify flat-mode-specific errors
+1. **Mode routing at entry point**: `convertPost()` checks `this.outputStructure.mode` and routes to appropriate method
+2. **Dedicated conversion methods**: `convertPostNested()` and `convertPostFlat()` handle mode-specific path logic
+3. **Shared helper methods**: 6 helper methods eliminate ~70% code duplication between modes
+4. **Calculate paths conditionally** based on mode using `path.join()` and `path.dirname()`
+5. **Maintain type safety** with explicit type annotations (`ImageProcessingResult`, `PostMetadata`)
+6. **Enhance error handling** to classify flat-mode-specific errors (validation, directory creation)
 
 ---
 
-## Implementation Steps
+## Actual Implementation
 
-### Step 1: Extract OutputStructure Configuration
+The implementation uses a **mode-routing architecture** with separate conversion methods and shared helper functions.
 
-**File**: [src/converter.ts](src/converter.ts)
-**Location**: After line 380 (after `const slug = this.extractSlugSafely(post, 0);`)
-
-**Add**:
-```typescript
-// Extract output structure configuration (default to nested for backward compatibility)
-const outputStructure = options?.outputStructure ?? { mode: 'nested' };
-const isFlat = outputStructure.mode === 'flat';
-```
-
-**Why**: Establishes single source of truth for mode selection, provides sensible default.
-
----
-
-### Step 2: Calculate Image Directory and Path Prefix
+### Architecture
 
 **File**: [src/converter.ts](src/converter.ts)
-**Location**: Replace lines 389-393
 
-**Current Code**:
+1. **Constructor Configuration** (lines 117-141):
+   ```typescript
+   constructor(deps?: ConverterDependencies) {
+     const config = { ...Converter.DEFAULT_CONFIG, ...deps?.config };
+     this.outputStructure = config.outputStructure; // Instance-level config
+
+     const outputMode = this.outputStructure.mode === 'flat' ? 'flat' : 'nested';
+     const defaultFileWriter = new FileWriter({ outputMode }); // Configured once
+     // ...
+   }
+   ```
+
+2. **Mode Routing** (lines 416-424):
+   ```typescript
+   async convertPost(...): Promise<ConvertedPost> {
+     const slug = this.extractSlugSafely(post, index);
+
+     // Route based on instance configuration
+     if (this.outputStructure.mode === 'flat') {
+       return this.convertPostFlat(post, slug, outputDir, options);
+     }
+     return this.convertPostNested(post, slug, outputDir, options);
+   }
+   ```
+
+3. **Shared Helper Methods** (lines 442-540):
+   - `parseAndTransform()`: Parse metadata and transform markdown
+   - `createImageProcessor()`: Handle ImageProcessor instantiation
+   - `ensureDirectoryExists()`: Unified directory creation
+   - `processImageResult()`: Event emission and error tracking
+   - `writeMarkdownFile()`: Frontmatter generation and file writing
+   - `createSuccessResult()`: Success result construction
+
+4. **Mode-Specific Methods**:
+   - `convertPostNested()` (lines 546-569): Nested structure with `imageProcessor.process()`
+   - `convertPostFlat()` (lines 607-641): Flat structure with `imageProcessor.processWithContext()`
+
+### Key Implementation Details
+
+**Nested Mode** (lines 546-569):
 ```typescript
-// Step 3: Create post directory (required by ImageProcessor)
-const postDir = path.join(outputDir, metadata.slug);
-if (!fs.existsSync(postDir)) {
-  fs.mkdirSync(postDir, { recursive: true });
+private async convertPostNested(...): Promise<ConvertedPost> {
+  const { metadata, transformedMarkdown } = this.parseAndTransform(post);
+
+  const imageDir = path.join(outputDir, metadata.slug);  // {output}/{slug}/
+  this.ensureDirectoryExists(imageDir);
+
+  const imageProcessor = this.createImageProcessor(options);
+  const imageResult = await imageProcessor.process(transformedMarkdown, imageDir);
+
+  this.processImageResult(imageResult, metadata.slug);
+
+  const outputPath = await this.writeMarkdownFile(metadata, outputDir, imageResult);
+  return this.createSuccessResult(metadata, outputPath);
 }
 ```
 
-**Replace With**:
+**Flat Mode** (lines 607-641):
 ```typescript
-// Step 3: Determine image directory and path prefix based on output mode
-let imageDir: string;
-let imagePathPrefix: string;
+private async convertPostFlat(...): Promise<ConvertedPost> {
+  this.validateFlatModeOutputPath(outputDir); // Path validation
 
-if (isFlat) {
-  // Flat mode: images go to sibling folder (e.g., src/_images alongside src/_posts)
+  const { metadata, transformedMarkdown } = this.parseAndTransform(post);
+
+  // Sibling directory structure
   const parentDir = path.dirname(outputDir);
-  const imageFolderName = outputStructure.imageFolderName ?? '_images';
-  imageDir = path.join(parentDir, imageFolderName);
-  imagePathPrefix = outputStructure.imagePathPrefix ?? '/images';
-} else {
-  // Nested mode (default): images go into post subdirectory
-  imageDir = path.join(outputDir, metadata.slug);
-  imagePathPrefix = '.';
-}
+  const imageFolderName = this.outputStructure.imageFolderName ?? '_images';
+  const imageDir = path.join(parentDir, imageFolderName);  // {parent}/_images/
+  const imagePathPrefix = this.outputStructure.imagePathPrefix ?? '/images';
+  this.ensureDirectoryExists(imageDir);
 
-// Create image directory if it doesn't exist
-if (!fs.existsSync(imageDir)) {
-  fs.mkdirSync(imageDir, { recursive: true });
-}
-```
-
-**Key Logic**:
-- Flat mode: `imageDir = dirname(outputDir) + imageFolderName`
-- Nested mode: `imageDir = outputDir + slug` (unchanged)
-- Defaults: `_images` folder, `/images` prefix
-
----
-
-### Step 3: Route to Appropriate ImageProcessor Method
-
-**File**: [src/converter.ts](src/converter.ts)
-**Location**: Replace lines 395-401
-
-**Current Code**:
-```typescript
-// Step 4: Process images (download and replace URLs)
-const imageProcessor =
-  options?.downloadOptions
-    ? new ImageProcessor(options.downloadOptions)
-    : this.imageProcessor;
-
-const imageResult = await imageProcessor.process(transformedMarkdown, postDir);
-```
-
-**Replace With**:
-```typescript
-// Step 4: Process images (download and replace URLs)
-// Note: Creating a new ImageProcessor with custom downloadOptions is safe because
-// download state is persisted via .downloaded-markers/ files on disk, not in-memory.
-// A new instance will read existing markers and skip already-downloaded images.
-// Custom options only affect retry behavior for new/failed downloads.
-const imageProcessor =
-  options?.downloadOptions
-    ? new ImageProcessor(options.downloadOptions)
-    : this.imageProcessor;
-
-let imageResult: ImageProcessingResult;
-if (isFlat) {
-  // Flat mode: use context-aware processing with custom paths
-  imageResult = await imageProcessor.processWithContext(transformedMarkdown, {
+  const imageProcessor = this.createImageProcessor(options);
+  const imageResult = await imageProcessor.processWithContext(transformedMarkdown, {
     imageDir,
     imagePathPrefix,
   });
-} else {
-  // Nested mode: use existing method for backward compatibility
-  imageResult = await imageProcessor.process(transformedMarkdown, imageDir);
+
+  this.processImageResult(imageResult, metadata.slug);
+
+  const outputPath = await this.writeMarkdownFile(metadata, outputDir, imageResult);
+  return this.createSuccessResult(metadata, outputPath);
 }
-```
-
-**Why**: Conditional routing preserves backward compatibility while enabling flat mode's custom path prefix.
-
----
-
-### Step 4: Create FileWriter with Correct OutputMode
-
-**File**: [src/converter.ts](src/converter.ts)
-**Location**: Replace lines 413-418
-
-**Current Code**:
-```typescript
-// Step 6: Write file
-const outputPath = await this.fileWriter.writePost(
-  outputDir,
-  metadata.slug,
-  frontmatter,
-  imageResult.markdown
-);
-```
-
-**Replace With**:
-```typescript
-// Step 6: Write file (FileWriter handles flat vs nested path logic)
-const fileWriter = isFlat
-  ? new FileWriter({ outputMode: 'flat' })
-  : this.fileWriter;
-
-const outputPath = await fileWriter.writePost(
-  outputDir,
-  metadata.slug,
-  frontmatter,
-  imageResult.markdown
-);
-```
-
-**Why**: FileWriter's `outputMode` controls file naming (flat: `{slug}.md`, nested: `{slug}/index.md`).
-
----
-
-### Step 5: Enhance Error Handling
-
-**File**: [src/converter.ts](src/converter.ts)
-**Location**: Line 435 (error type classification)
-
-**Update**:
 ```typescript
 // Before
 } else if (errorMessage.includes('Failed to write') || errorMessage.includes('create directory')) {
@@ -468,10 +412,12 @@ npm run test:coverage
 
 ## Summary
 
-Phase 4, Step 4.1 will update `convertPost` to support flat output mode by:
-- Reading `outputStructure` from options with backward-compatible defaults
-- Calculating image paths based on mode (nested vs flat)
-- Routing to appropriate ImageProcessor methods
-- Creating FileWriter instances with correct `outputMode`
+Phase 4, Step 4.1 updated `convertPost` to support flat output mode by:
+- Using instance-level `outputStructure` configuration (set at construction via `ConverterConfig`)
+- Routing to mode-specific conversion methods (`convertPostNested()` or `convertPostFlat()`)
+- Extracting 6 shared helper methods to eliminate ~70% code duplication
+- Calculating image paths based on mode (nested: `{output}/{slug}/`, flat: `{parent}/_images/`)
+- Using mode-specific ImageProcessor methods (`.process()` vs `.processWithContext()`)
+- Configuring FileWriter once at construction with the appropriate `outputMode`
 
-**Ready to implement?** This plan provides specific line-by-line changes for a robust, well-tested implementation that maintains 100% backward compatibility.
+**Implementation Status**: ✅ Complete with 447 passing tests and 99.49% coverage
