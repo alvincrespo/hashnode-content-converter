@@ -877,6 +877,8 @@ export class Converter extends EventEmitter {
     } catch (error) {
       // Fallback to nested format for invalid slugs
       // This should rarely happen since postExists() validates first
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      this.logger?.warn(`Failed to compute skip path for slug "${slug}": ${errorMsg}. Using nested format fallback.`);
       return path.join(outputDir, slug, 'index.md');
     }
   }
