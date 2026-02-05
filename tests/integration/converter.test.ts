@@ -8,6 +8,7 @@ import { ImageProcessor } from '../../src/processors/image-processor.js';
 import { FrontmatterGenerator } from '../../src/processors/frontmatter-generator.js';
 import { FileWriter } from '../../src/services/file-writer.js';
 import { Logger } from '../../src/services/logger.js';
+import { Post } from '../../src/models/post.js';
 import type { HashnodePost } from '../../src/types/hashnode-schema.js';
 // Mock fs module
 vi.mock('node:fs');
@@ -302,6 +303,44 @@ describe('Converter', () => {
           }),
         })
       );
+    });
+
+    it('should fall back to nested format when Post.getFilePath fails', async () => {
+      // NOTE: This tests defensive error handling in getSkipOutputPath().
+      // Post.getFilePath() is mocked to throw, simulating an unexpected error.
+      // This ensures the fallback path works even if Post encounters issues.
+      vi.mocked(mockFileWriter.postExists).mockReturnValue(true);
+
+      const getFilePathSpy = vi.spyOn(Post.prototype, 'getFilePath')
+        .mockImplementationOnce(() => {
+          throw new Error('Simulated getFilePath failure');
+        });
+
+      const completedHandler = vi.fn();
+      converter.on('conversion-completed', completedHandler);
+
+      await converter.convertAllPosts('/path/to/export.json', '/output', {
+        skipExisting: true,
+      });
+
+      // Should log warning about fallback
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to compute skip path for slug "test-post"')
+      );
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('Using nested format fallback')
+      );
+
+      // Should fall back to nested format
+      expect(completedHandler).toHaveBeenCalledWith(
+        expect.objectContaining({
+          result: expect.objectContaining({
+            outputPath: path.join('/output', 'test-post', 'index.md'),
+          }),
+        })
+      );
+
+      getFilePathSpy.mockRestore();
     });
   });
 
