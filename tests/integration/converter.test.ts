@@ -283,6 +283,53 @@ describe('Converter', () => {
         expect.stringContaining('Skipped')
       );
     });
+
+    it('should emit skip event with correct nested path', async () => {
+      vi.mocked(mockFileWriter.postExists).mockReturnValue(true);
+      const completedHandler = vi.fn();
+      converter.on('conversion-completed', completedHandler);
+
+      await converter.convertAllPosts('/path/to/export.json', '/output', {
+        skipExisting: true,
+      });
+
+      expect(completedHandler).toHaveBeenCalledWith(
+        expect.objectContaining({
+          result: expect.objectContaining({
+            slug: 'test-post',
+            outputPath: path.join('/output', 'test-post', 'index.md'),
+            success: true,
+          }),
+        })
+      );
+    });
+
+    it('should handle invalid slugs in skip path gracefully', async () => {
+      // Create post with invalid slug
+      const invalidPost = {
+        ...samplePost,
+        slug: '/absolute/path',
+      };
+      const invalidExport = { posts: [invalidPost] };
+      vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(invalidExport));
+      vi.mocked(mockFileWriter.postExists).mockReturnValue(true);
+
+      const completedHandler = vi.fn();
+      converter.on('conversion-completed', completedHandler);
+
+      await converter.convertAllPosts('/path/to/export.json', '/output', {
+        skipExisting: true,
+      });
+
+      // Should fall back to nested format for invalid slugs
+      expect(completedHandler).toHaveBeenCalledWith(
+        expect.objectContaining({
+          result: expect.objectContaining({
+            outputPath: expect.stringMatching(/index\.md$/),
+          }),
+        })
+      );
+    });
   });
 
   describe('convertAllPosts - Fatal Errors', () => {
@@ -969,6 +1016,36 @@ describe('Converter', () => {
       expect(result.success).toBe(true);
 
       constructorSpy.mockRestore();
+    });
+
+    it('should emit skip event with correct flat path when post exists', async () => {
+      const flatConverter = new Converter({
+        postParser: mockPostParser,
+        markdownTransformer: mockMarkdownTransformer,
+        imageProcessor: mockImageProcessor,
+        frontmatterGenerator: mockFrontmatterGenerator,
+        fileWriter: mockFileWriter,
+        logger: mockLogger,
+        config: { outputStructure: { mode: 'flat' } },
+      });
+
+      vi.mocked(mockFileWriter.postExists).mockReturnValue(true);
+      const completedHandler = vi.fn();
+      flatConverter.on('conversion-completed', completedHandler);
+
+      await flatConverter.convertAllPosts('/path/to/export.json', '/blog/_posts', {
+        skipExisting: true,
+      });
+
+      expect(completedHandler).toHaveBeenCalledWith(
+        expect.objectContaining({
+          result: expect.objectContaining({
+            slug: 'test-post',
+            outputPath: path.join('/blog/_posts', 'test-post.md'),
+            success: true,
+          }),
+        })
+      );
     });
   });
 

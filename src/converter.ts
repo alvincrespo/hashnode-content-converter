@@ -8,6 +8,7 @@ import { ImageProcessor } from './processors/image-processor.js';
 import { FrontmatterGenerator } from './processors/frontmatter-generator.js';
 import { FileWriter } from './services/file-writer.js';
 import { Logger } from './services/logger.js';
+import { Post } from './models/post.js';
 
 import type { HashnodePost, HashnodeExport, PostMetadata } from './types/hashnode-schema.js';
 import type { ConversionOptions, OutputStructure, ConverterConfig } from './types/converter-options.js';
@@ -332,7 +333,7 @@ export class Converter extends EventEmitter {
           const skipResult: ConvertedPost = {
             slug,
             title: post.title || slug,
-            outputPath: path.join(outputDir, slug, 'index.md'),
+            outputPath: this.getSkipOutputPath(outputDir, slug),
             success: true,
           };
           const completeEvent: ConversionCompletedEvent = {
@@ -853,5 +854,30 @@ export class Converter extends EventEmitter {
       .forEach((err) => {
         this.logger?.trackHttp403(slug, err.filename, err.url);
       });
+  }
+
+  /**
+   * Get the output path for a skipped post based on output mode.
+   * Creates a temporary Post instance to compute the correct path.
+   *
+   * @param outputDir - Base output directory
+   * @param slug - Post slug
+   * @returns Full path to the markdown file
+   */
+  private getSkipOutputPath(outputDir: string, slug: string): string {
+    try {
+      const outputMode = this.outputStructure.mode === 'flat' ? 'flat' : 'nested';
+      const tempPost = new Post({
+        slug,
+        frontmatter: '',
+        content: '',
+        outputMode,
+      });
+      return tempPost.getFilePath(outputDir);
+    } catch (error) {
+      // Fallback to nested format for invalid slugs
+      // This should rarely happen since postExists() validates first
+      return path.join(outputDir, slug, 'index.md');
+    }
   }
 }
