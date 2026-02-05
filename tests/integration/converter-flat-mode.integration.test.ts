@@ -399,4 +399,53 @@ describe('Converter - Flat Output Mode Integration Tests', () => {
     // Assert - Not using relative path
     expect(content).not.toContain('![img](./prefix-456.jpg)');
   });
+
+  it('should maintain backwards compatibility in nested mode', async () => {
+    // Arrange - Create Converter with NO config (defaults to nested mode)
+    const nestedConverter = new Converter();
+
+    const exportData = {
+      posts: [{
+        _id: 'test001',
+        id: 'test001',
+        cuid: 'test001',
+        slug: 'nested-post',
+        title: 'Nested Post',
+        contentMarkdown: '![img](https://cdn.hashnode.com/res/hashnode/image/upload/v1/nested-789.png)',
+        content: '<p><img src="https://cdn.hashnode.com/res/hashnode/image/upload/v1/nested-789.png" alt="img"></p>',
+        dateAdded: '2024-01-15T10:00:00.000Z',
+        createdAt: '2024-01-15T10:00:00.000Z',
+        updatedAt: '2024-01-15T10:00:00.000Z',
+        brief: 'Test',
+        views: 0,
+        author: 'Test Author',
+        tags: [],
+        isActive: true,
+      }] as HashnodePost[],
+    };
+    fs.writeFileSync(exportPath, JSON.stringify(exportData));
+
+    // Act - No outputStructure option (defaults to nested)
+    await nestedConverter.convertAllPosts(exportPath, outputDir, {
+      skipExisting: false,
+    });
+
+    // Assert - Nested directory structure
+    const postDir = path.join(outputDir, 'nested-post');
+    expect(fs.existsSync(postDir)).toBe(true);
+    expect(fs.existsSync(path.join(postDir, 'index.md'))).toBe(true);
+
+    // Assert - No flat file created
+    expect(fs.existsSync(path.join(outputDir, 'nested-post.md'))).toBe(false);
+
+    // Assert - Content exists and uses correct path format
+    const content = fs.readFileSync(path.join(postDir, 'index.md'), 'utf8');
+
+    // In nested mode, should NOT use /images/ prefix (that's flat mode only)
+    expect(content).not.toContain('/images/');
+
+    // Should have frontmatter
+    expect(content).toMatch(/^---\n/);
+    expect(content).toContain('title:');
+  });
 });
