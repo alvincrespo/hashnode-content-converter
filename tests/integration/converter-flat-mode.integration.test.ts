@@ -217,4 +217,80 @@ describe('Converter - Flat Output Mode Integration Tests', () => {
     // Assert - Not using relative path
     expect(content).not.toContain('![alt text](./xyz-789.jpg)');
   });
+
+  it('should skip existing {slug}.md files when skipExisting is true', async () => {
+    // Arrange - Create Converter with flat mode config
+    const flatConverter = new Converter({
+      config: {
+        outputStructure: { mode: 'flat' },
+      },
+    });
+
+    const exportData = {
+      posts: [
+        {
+          _id: 'test001',
+          id: 'test001',
+          cuid: 'test001',
+          slug: 'existing-post',
+          title: 'Existing Post',
+          contentMarkdown: '# New Content\n\nThis should not be written.',
+          content: '<h1>New Content</h1>',
+          dateAdded: '2024-01-15T10:00:00.000Z',
+          createdAt: '2024-01-15T10:00:00.000Z',
+          updatedAt: '2024-01-15T10:00:00.000Z',
+          brief: 'Test',
+          views: 0,
+          author: 'Test Author',
+          tags: [],
+          isActive: true,
+        },
+        {
+          _id: 'test002',
+          id: 'test002',
+          cuid: 'test002',
+          slug: 'new-post',
+          title: 'New Post',
+          contentMarkdown: '# Fresh Content\n\nThis should be written.',
+          content: '<h1>Fresh Content</h1>',
+          dateAdded: '2024-01-16T10:00:00.000Z',
+          createdAt: '2024-01-16T10:00:00.000Z',
+          updatedAt: '2024-01-16T10:00:00.000Z',
+          brief: 'Test',
+          views: 0,
+          author: 'Test Author',
+          tags: [],
+          isActive: true,
+        },
+      ] as HashnodePost[],
+    };
+    fs.writeFileSync(exportPath, JSON.stringify(exportData));
+
+    // Pre-create existing post file
+    const existingContent = '---\ntitle: "Old Version"\n---\n\n# Old Content';
+    fs.writeFileSync(path.join(outputDir, 'existing-post.md'), existingContent);
+
+    // Act
+    const result = await flatConverter.convertAllPosts(exportPath, outputDir, {
+      skipExisting: true,
+    });
+
+    // Assert - Stats
+    expect(result.converted).toBe(1); // Only new-post
+    expect(result.skipped).toBe(1); // existing-post
+
+    // Assert - Existing file unchanged
+    const existingFileContent = fs.readFileSync(
+      path.join(outputDir, 'existing-post.md'),
+      'utf8'
+    );
+    expect(existingFileContent).toBe(existingContent);
+    expect(existingFileContent).toContain('Old Version');
+    expect(existingFileContent).not.toContain('New Content');
+
+    // Assert - New file created
+    expect(fs.existsSync(path.join(outputDir, 'new-post.md'))).toBe(true);
+    const newFileContent = fs.readFileSync(path.join(outputDir, 'new-post.md'), 'utf8');
+    expect(newFileContent).toContain('Fresh Content');
+  });
 });
