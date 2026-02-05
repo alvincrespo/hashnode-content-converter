@@ -354,8 +354,8 @@ npm run test:coverage
 ## Implementation Checklist
 
 ### Phase 1: Core Fix
-- [ ] Add Post import to converter.ts
-- [ ] Create `getSkipOutputPath()` helper method
+- [x] Add Post import to converter.ts
+- [x] Create `getSkipOutputPath()` helper method
 - [x] Update line 335 to use helper method
 
 ### Phase 2: Testing
