@@ -356,23 +356,23 @@ npm run test:coverage
 ### Phase 1: Core Fix
 - [ ] Add Post import to converter.ts
 - [ ] Create `getSkipOutputPath()` helper method
-- [ ] Update line 335 to use helper method
+- [x] Update line 335 to use helper method
 
 ### Phase 2: Testing
-- [ ] Add Test 1: Skip event path - nested mode
-- [ ] Add Test 2: Skip event path - flat mode
-- [ ] Add Test 3: Invalid slug edge case
+- [x] Add Test 1: Skip event path - nested mode
+- [x] Add Test 2: Skip event path - flat mode
+- [x] Add Test 3: Invalid slug edge case
 
 ### Phase 3: Verification
-- [ ] Run `npm run type-check` - verify no errors
-- [ ] Run `npm run build` - verify success
-- [ ] Run `npm test` - verify all tests pass
-- [ ] Run `npm run test:coverage` - verify ≥99% coverage
+- [x] Run `npm run type-check` - verify no errors
+- [x] Run `npm run build` - verify success
+- [x] Run `npm test` - verify all tests pass
+- [x] Run `npm run test:coverage` - verify ≥99% coverage
 
 ### Phase 4: Documentation
-- [ ] Mark Step 4.2 complete in IMPLEMENTATION_FLAT.md
-- [ ] Update GitHub issue #52 with completion status
-- [ ] Create this plan document at docs/features/flat/PHASE_4_STEP_4_2.md
+- [x] Mark Step 4.2 complete in IMPLEMENTATION_FLAT.md
+- [x] Update GitHub issue #52 with completion status
+- [x] Create this plan document at docs/features/flat/PHASE_4_STEP_4_2.md
 
 ---
 
