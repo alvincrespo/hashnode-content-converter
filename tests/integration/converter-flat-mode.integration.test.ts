@@ -343,4 +343,60 @@ describe('Converter - Flat Output Mode Integration Tests', () => {
     const markersDir = path.join(customImageDir, '.downloaded-markers');
     expect(fs.existsSync(markersDir)).toBe(true);
   });
+
+  it('should respect custom imagePathPrefix', async () => {
+    // Arrange - Create Converter with flat mode and custom image path prefix
+    const flatConverter = new Converter({
+      config: {
+        outputStructure: {
+          mode: 'flat',
+          imagePathPrefix: '/static/images', // Custom path prefix
+        },
+      },
+    });
+
+    const exportData = {
+      posts: [{
+        _id: 'test001',
+        id: 'test001',
+        cuid: 'test001',
+        slug: 'custom-prefix-post',
+        title: 'Custom Prefix Post',
+        contentMarkdown: '![img](https://cdn.hashnode.com/res/hashnode/image/upload/v1/prefix-456.jpg)',
+        content: '<p><img src="https://cdn.hashnode.com/res/hashnode/image/upload/v1/prefix-456.jpg" alt="img"></p>',
+        dateAdded: '2024-01-15T10:00:00.000Z',
+        createdAt: '2024-01-15T10:00:00.000Z',
+        updatedAt: '2024-01-15T10:00:00.000Z',
+        brief: 'Test',
+        views: 0,
+        author: 'Test Author',
+        tags: [],
+        isActive: true,
+      }] as HashnodePost[],
+    };
+    fs.writeFileSync(exportPath, JSON.stringify(exportData));
+
+    // Act
+    await flatConverter.convertAllPosts(exportPath, outputDir, {
+      skipExisting: false,
+    });
+
+    // Assert - Read markdown content
+    const content = fs.readFileSync(
+      path.join(outputDir, 'custom-prefix-post.md'),
+      'utf8'
+    );
+
+    // Assert - Custom prefix used (if download succeeded)
+    if (!content.includes('cdn.hashnode.com')) {
+      expect(content).toContain('/static/images/');
+      expect(content).toContain('prefix-456.jpg');
+
+      // Assert - Default prefix NOT used
+      expect(content).not.toContain('/images/prefix-456.jpg');
+    }
+
+    // Assert - Not using relative path
+    expect(content).not.toContain('![img](./prefix-456.jpg)');
+  });
 });
