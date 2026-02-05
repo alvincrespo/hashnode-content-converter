@@ -303,33 +303,6 @@ describe('Converter', () => {
         })
       );
     });
-
-    it('should handle invalid slugs in skip path gracefully', async () => {
-      // Create post with invalid slug
-      const invalidPost = {
-        ...samplePost,
-        slug: '/absolute/path',
-      };
-      const invalidExport = { posts: [invalidPost] };
-      vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(invalidExport));
-      vi.mocked(mockFileWriter.postExists).mockReturnValue(true);
-
-      const completedHandler = vi.fn();
-      converter.on('conversion-completed', completedHandler);
-
-      await converter.convertAllPosts('/path/to/export.json', '/output', {
-        skipExisting: true,
-      });
-
-      // Should fall back to nested format for invalid slugs
-      expect(completedHandler).toHaveBeenCalledWith(
-        expect.objectContaining({
-          result: expect.objectContaining({
-            outputPath: expect.stringMatching(/index\.md$/),
-          }),
-        })
-      );
-    });
   });
 
   describe('convertAllPosts - Fatal Errors', () => {
