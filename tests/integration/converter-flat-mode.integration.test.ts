@@ -293,4 +293,54 @@ describe('Converter - Flat Output Mode Integration Tests', () => {
     const newFileContent = fs.readFileSync(path.join(outputDir, 'new-post.md'), 'utf8');
     expect(newFileContent).toContain('Fresh Content');
   });
+
+  it('should respect custom imageFolderName', async () => {
+    // Arrange - Create Converter with flat mode and custom image folder name
+    const flatConverter = new Converter({
+      config: {
+        outputStructure: {
+          mode: 'flat',
+          imageFolderName: 'assets', // Custom folder name
+        },
+      },
+    });
+
+    const exportData = {
+      posts: [{
+        _id: 'test001',
+        id: 'test001',
+        cuid: 'test001',
+        slug: 'custom-folder-post',
+        title: 'Custom Folder Post',
+        contentMarkdown: '![img](https://cdn.hashnode.com/res/hashnode/image/upload/v1/custom-123.png)',
+        content: '<p><img src="https://cdn.hashnode.com/res/hashnode/image/upload/v1/custom-123.png" alt="img"></p>',
+        dateAdded: '2024-01-15T10:00:00.000Z',
+        createdAt: '2024-01-15T10:00:00.000Z',
+        updatedAt: '2024-01-15T10:00:00.000Z',
+        brief: 'Test',
+        views: 0,
+        author: 'Test Author',
+        tags: [],
+        isActive: true,
+      }] as HashnodePost[],
+    };
+    fs.writeFileSync(exportPath, JSON.stringify(exportData));
+
+    // Act
+    await flatConverter.convertAllPosts(exportPath, outputDir, {
+      skipExisting: false,
+    });
+
+    // Assert - Custom image directory exists
+    const customImageDir = path.join(outputDir, '..', 'assets');
+    expect(fs.existsSync(customImageDir)).toBe(true);
+
+    // Assert - Default _images directory NOT created
+    const defaultImageDir = path.join(outputDir, '..', '_images');
+    expect(fs.existsSync(defaultImageDir)).toBe(false);
+
+    // Assert - Markers directory created in custom location
+    const markersDir = path.join(customImageDir, '.downloaded-markers');
+    expect(fs.existsSync(markersDir)).toBe(true);
+  });
 });
