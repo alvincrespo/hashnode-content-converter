@@ -870,8 +870,8 @@ async convertPost(
 ```
 
 #### Step 4.2: Update convertAllPosts Method
-- [ ] Create FileWriter with correct output mode for `postExists` check
-- [ ] Ensure image directory created once at start (for flat mode)
+- [x] Create FileWriter with correct output mode for `postExists` check (Already complete - uses `this.fileWriter`)
+- [x] Fix skip event `outputPath` to use mode-aware path (Bug fix completed)
 
 **Proposed Changes to `src/converter.ts` `convertAllPosts` method (around line 274):**
 
