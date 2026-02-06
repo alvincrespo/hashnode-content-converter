@@ -54,6 +54,15 @@ export class ImageProcessor {
    * Create a new ImageProcessor instance.
    *
    * @param options - Configuration options for image downloading
+   *
+   * TODO: Add optional `downloader` parameter for dependency injection to improve testability.
+   * Current limitation: ImageDownloader is created internally, preventing reliable mocking
+   * in integration tests. Proposed signature:
+   * ```typescript
+   * constructor(options?: ImageProcessorOptions, downloader?: ImageDownloader)
+   * ```
+   * This would enable proper mocking without conditional assertions in tests.
+   * See: docs/features/flat/PHASE_4_STEP_4_3.md#future-improvements
    */
   constructor(options?: ImageProcessorOptions) {
     // Set defaults matching reference implementation
@@ -65,6 +74,7 @@ export class ImageProcessor {
     };
 
     // Create ImageDownloader with configuration
+    // TODO: Make this injectable via optional constructor parameter
     this.downloader = new ImageDownloader({
       maxRetries: this.options.maxRetries,
       retryDelayMs: this.options.retryDelayMs,

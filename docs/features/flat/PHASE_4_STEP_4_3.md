@@ -742,6 +742,42 @@ npm run test:coverage
 
 ---
 
+## Future Improvements
+
+### ImageProcessor Dependency Injection
+
+**Current Limitation**: `ImageProcessor` creates its own `ImageDownloader` internally, preventing proper mocking in integration tests:
+
+```typescript
+// Current implementation (src/processors/image-processor.ts:57-73)
+constructor(options?: ImageProcessorOptions) {
+  this.options = { /* ... */ };
+  this.downloader = new ImageDownloader({ /* ... */ }); // ← Created internally
+}
+```
+
+**Proposed Solution**: Add optional `downloader` parameter for dependency injection:
+
+```typescript
+constructor(
+  options?: ImageProcessorOptions,
+  downloader?: ImageDownloader
+) {
+  this.options = { /* ... */ };
+  this.downloader = downloader ?? new ImageDownloader({ /* ... */ });
+}
+```
+
+**Benefits**:
+- Enables reliable image download mocking in integration tests
+- Eliminates need for conditional assertions
+- Improves test predictability and eliminates false positives
+- Maintains backward compatibility (optional parameter)
+
+**Tracking**: See GitHub issue for implementation details
+
+---
+
 ## Potential Challenges & Solutions
 
 ### Challenge 1: Temp Directory Cleanup on Test Failure
