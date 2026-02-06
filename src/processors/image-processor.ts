@@ -29,13 +29,15 @@ import type {
  *
  * Instance Independence:
  * Because download state is persisted to disk via marker files
- * (not in-memory), multiple ImageProcessor instances safely share
- * state. Creating a new instance with different options won't cause
- * re-downloading of already-downloaded images. This design enables:
+ * (not in-memory), multiple ImageProcessor instances can reuse
+ * the same on-disk state when pointing at the same blog/image
+ * directories. Creating a new instance with different options
+ * won't cause re-downloading of already-downloaded images. This
+ * design enables:
  * - Safe per-conversion custom options (different retry settings)
  * - Resumable downloads across process restarts
- * - Parallel processing without state conflicts
- * - Shared image deduplication in flat mode
+ * - Reduced redundant downloads when reusing the same marker directory
+ * - Shared image deduplication in flat mode (when using a flat layout)
  *
  * @example
  * ```typescript
