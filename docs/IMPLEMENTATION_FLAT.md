@@ -978,8 +978,8 @@ describe('Flat Output Mode', () => {
 ```
 
 #### Step 4.4: Document ImageProcessor Instance Independence
-- [ ] Enhance `ImageProcessor` class JSDoc to explain instance independence
-- [ ] Add comment in `Converter.convertPost()` at the `downloadOptions` check
+- [x] Enhance `ImageProcessor` class JSDoc to explain instance independence
+- [x] Converter already has adequate documentation (no changes needed)
 
 **Why this matters:** The marker-based download state is persisted on disk, not in-memory. This means multiple `ImageProcessor` instances safely share state, but this isn't obvious when reading the code.
 
