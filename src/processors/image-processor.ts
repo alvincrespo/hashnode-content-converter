@@ -39,6 +39,8 @@ import type {
  * - Reduced redundant downloads when reusing the same marker directory
  * - Shared image deduplication in flat mode (when using a flat layout)
  *
+ * @see {@link Converter.createImageProcessor} for usage in flat mode implementation
+ *
  * @example
  * ```typescript
  * const processor = new ImageProcessor({
