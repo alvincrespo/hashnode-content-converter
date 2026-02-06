@@ -23,7 +23,7 @@ From [docs/IMPLEMENTATION_FLAT.md](../../../docs/IMPLEMENTATION_FLAT.md) (lines 
 
 ### Functional Requirements
 1. ✅ Enhance `ImageProcessor` class-level JSDoc to explain instance independence
-2. ✅ Document in constructor JSDoc why creating new instances is safe
+2. ⏭️ Constructor JSDoc updates (skipped - Converter documentation already adequate)
 3. ✅ Reference the marker-based persistence mechanism
 4. ✅ Explain the design enables safe per-conversion custom options
 
@@ -439,7 +439,7 @@ cat src/processors/image-processor.ts | grep -A 20 "Instance Independence"
 
 **Documentation Additions**:
 1. Class-level JSDoc section explaining instance independence and benefits
-2. Constructor JSDoc note explaining why creating instances is safe
+2. Cross-reference link to Converter.createImageProcessor for discoverability
 3. Comprehensive Phase 4.4 plan document
 
 **Impact**: Minimal code changes (documentation only), high clarity gain for future developers.
