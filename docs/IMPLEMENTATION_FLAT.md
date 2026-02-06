@@ -215,9 +215,9 @@ src/
 ### Phase 1: Type Definitions
 
 #### Step 1.1: Add OutputStructure Interface
-- [ ] Create `OutputStructure` interface in `src/types/converter-options.ts`
-- [ ] Add `outputStructure` field to `ConversionOptions` interface
-- [ ] Export new types from `src/index.ts`
+- [x] Create `OutputStructure` interface in `src/types/converter-options.ts`
+- [x] Add `outputStructure` field to `ConverterConfig` interface
+- [x] Export new types from `src/index.ts`
 
 **Proposed Changes to `src/types/converter-options.ts`:**
 
@@ -273,8 +273,8 @@ export interface ConversionOptions {
 ```
 
 #### Step 1.2: Add ImageProcessorContext Interface
-- [ ] Create `ImageProcessorContext` interface in `src/types/image-processor.ts`
-- [ ] Export from `src/index.ts`
+- [x] Create `ImageProcessorContext` interface in `src/types/image-processor.ts`
+- [x] Export from `src/index.ts`
 
 **New File: `src/types/image-processor.ts`:**
 
@@ -311,9 +311,9 @@ export interface ImageProcessorContext {
 ### Phase 2: FileWriter Service Updates
 
 #### Step 2.1: Add outputMode Configuration
-- [ ] Add `outputMode` to `FileWriterConfig` interface
-- [ ] Store output mode in class property
-- [ ] Update constructor to accept new config
+- [x] Add `outputMode` to `FileWriterConfig` interface
+- [x] Store output mode in class property
+- [x] Update constructor to accept new config
 
 **Proposed Changes to `src/services/file-writer.ts`:**
 
@@ -346,9 +346,9 @@ constructor(config?: FileWriterConfig) {
 ```
 
 #### Step 2.2: Update postExists Method
-- [ ] Check for `{slug}.md` file in flat mode
-- [ ] Check for `{slug}/` directory in nested mode (current behavior)
-- [ ] Add unit tests for flat mode existence check
+- [x] Check for `{slug}.md` file in flat mode
+- [x] Check for `{slug}/` directory in nested mode (current behavior)
+- [x] Add unit tests for flat mode existence check
 
 **Proposed Changes to `postExists` method (lines 183-192):**
 
@@ -378,10 +378,10 @@ postExists(outputDir: string, slug: string): boolean {
 ```
 
 #### Step 2.3: Update writePost Method
-- [ ] Write to `{slug}.md` in flat mode
-- [ ] Write to `{slug}/index.md` in nested mode (current behavior)
-- [ ] Ensure output directory exists (but don't create subdirectory in flat mode)
-- [ ] Add unit tests for flat mode file writing
+- [x] Write to `{slug}.md` in flat mode
+- [x] Write to `{slug}/index.md` in nested mode (current behavior)
+- [x] Ensure output directory exists (but don't create subdirectory in flat mode)
+- [x] Add unit tests for flat mode file writing
 
 **Proposed Changes to `writePost` method (lines 203-244):**
 
@@ -458,11 +458,11 @@ async writePost(
 ```
 
 #### Step 2.4: Write FileWriter Unit Tests
-- [ ] Test `postExists()` returns true when `{slug}.md` exists in flat mode
-- [ ] Test `postExists()` returns false when `{slug}.md` does not exist in flat mode
-- [ ] Test `writePost()` creates `{slug}.md` in flat mode (no subdirectory)
-- [ ] Test `writePost()` creates output directory if missing in flat mode
-- [ ] Test nested mode behavior remains unchanged
+- [x] Test `postExists()` returns true when `{slug}.md` exists in flat mode
+- [x] Test `postExists()` returns false when `{slug}.md` does not exist in flat mode
+- [x] Test `writePost()` creates `{slug}.md` in flat mode (no subdirectory)
+- [x] Test `writePost()` creates output directory if missing in flat mode
+- [x] Test nested mode behavior remains unchanged
 
 **Test Cases for `tests/unit/services/file-writer.test.ts`:**
 
@@ -516,10 +516,10 @@ describe('Flat Output Mode', () => {
 ### Phase 3: ImageProcessor Updates
 
 #### Step 3.1: Add processWithContext Method
-- [ ] Create new `processWithContext()` method that accepts `ImageProcessorContext`
-- [ ] Use provided `imageDir` for downloads instead of inferring from blogDir
-- [ ] Use provided `imagePathPrefix` for markdown URL replacement
-- [ ] Keep existing `process()` method for backwards compatibility
+- [x] Create new `processWithContext()` method that accepts `ImageProcessorContext`
+- [x] Use provided `imageDir` for downloads instead of inferring from blogDir
+- [x] Use provided `imagePathPrefix` for markdown URL replacement
+- [x] Keep existing `process()` method for backwards compatibility
 
 **Proposed Changes to `src/processors/image-processor.ts`:**
 
@@ -675,12 +675,14 @@ private recordDownloadFailureForDir(
 ```
 
 #### Step 3.2: Write ImageProcessor Unit Tests
-- [ ] Test `processWithContext` uses provided `imageDir`
-- [ ] Test `processWithContext` uses provided `imagePathPrefix`
-- [ ] Test marker files created in shared directory
-- [ ] Test path prefix with trailing slash
-- [ ] Test path prefix without trailing slash
-- [ ] Test existing `process()` method unchanged
+- [x] Test `processWithContext` uses provided `imageDir` (Written in Step 3.1)
+- [x] Test `processWithContext` uses provided `imagePathPrefix` (Written in Step 3.1)
+- [x] Test marker files created in shared directory (Written in Step 3.1)
+- [x] Test path prefix with trailing slash (Written in Step 3.1)
+- [x] Test path prefix without trailing slash (Written in Step 3.1)
+- [x] Test existing `process()` method unchanged (Written in Step 3.1)
+
+**Status**: ✅ COMPLETE - All tests were written during Step 3.1 implementation (78 tests, 99.46% coverage)
 
 **Test Cases for `tests/unit/processors/image-processor.test.ts`:**
 
@@ -760,11 +762,11 @@ describe('processWithContext', () => {
 ### Phase 4: Converter Updates
 
 #### Step 4.1: Update convertPost Method
-- [ ] Read `outputStructure` from options
-- [ ] Calculate image directory based on mode (nested vs flat)
-- [ ] Create image directory before processing
-- [ ] Use `processWithContext()` for flat mode
-- [ ] Create FileWriter with appropriate `outputMode`
+- [x] Read `outputStructure` from options
+- [x] Calculate image directory based on mode (nested vs flat)
+- [x] Create image directory before processing
+- [x] Use `processWithContext()` for flat mode
+- [x] Create FileWriter with appropriate `outputMode`
 
 **Proposed Changes to `src/converter.ts` `convertPost` method (around line 375-455):**
 
@@ -868,8 +870,8 @@ async convertPost(
 ```
 
 #### Step 4.2: Update convertAllPosts Method
-- [ ] Create FileWriter with correct output mode for `postExists` check
-- [ ] Ensure image directory created once at start (for flat mode)
+- [x] Create FileWriter with correct output mode for `postExists` check (Already complete - uses `this.fileWriter`)
+- [x] Fix skip event `outputPath` to use mode-aware path (Bug fix completed)
 
 **Proposed Changes to `src/converter.ts` `convertAllPosts` method (around line 274):**
 
@@ -900,13 +902,13 @@ if (effectiveOptions.skipExisting && existenceChecker.postExists(outputDir, slug
 ```
 
 #### Step 4.3: Write Converter Integration Tests
-- [ ] Test full pipeline in flat mode
-- [ ] Test image directory creation as sibling
-- [ ] Test image path prefix in output markdown
-- [ ] Test post existence check with flat files
-- [ ] Test custom `imageFolderName` option
-- [ ] Test custom `imagePathPrefix` option
-- [ ] Test nested mode unchanged (regression)
+- [x] Test full pipeline in flat mode
+- [x] Test image directory creation as sibling
+- [x] Test image path prefix in output markdown
+- [x] Test post existence check with flat files
+- [x] Test custom `imageFolderName` option
+- [x] Test custom `imagePathPrefix` option
+- [x] Test nested mode unchanged (regression)
 
 **Test Cases for `tests/integration/converter.test.ts`:**
 
@@ -976,8 +978,8 @@ describe('Flat Output Mode', () => {
 ```
 
 #### Step 4.4: Document ImageProcessor Instance Independence
-- [ ] Enhance `ImageProcessor` class JSDoc to explain instance independence
-- [ ] Add comment in `Converter.convertPost()` at the `downloadOptions` check
+- [x] Enhance `ImageProcessor` class JSDoc to explain instance independence
+- [x] Converter already has adequate documentation (no changes needed)
 
 **Why this matters:** The marker-based download state is persisted on disk, not in-memory. This means multiple `ImageProcessor` instances safely share state, but this isn't obvious when reading the code.
 
@@ -1064,9 +1066,92 @@ program
 ```
 
 #### Step 5.3: Build outputStructure from CLI Options
+- [ ] Add validation functions for imageFolder and imagePrefix (security)
 - [ ] Create `OutputStructure` object when `--flat` is set
+- [ ] Validate imageFolder and imagePrefix before use
 - [ ] Pass through to `ConversionOptions`
 - [ ] Warn if `--image-folder` or `--image-prefix` are used without `--flat`
+
+**Security Note**: This step includes path validation to prevent directory traversal attacks and injection vulnerabilities.
+
+**Proposed Changes to `src/cli/convert.ts` - Add validation functions (after imports, around line 20):**
+
+```typescript
+/**
+ * Validate image folder name for security.
+ * Prevents path traversal, absolute paths, and shell metacharacters.
+ *
+ * @param folder - The image folder name to validate
+ * @throws {Error} If the folder name is invalid
+ */
+function validateImageFolder(folder: string): void {
+  // Prevent absolute paths - image folder must be relative
+  if (path.isAbsolute(folder)) {
+    throw new Error(
+      `Invalid --image-folder: "${folder}". ` +
+      `Must be a relative path (e.g., "_images", "assets").`
+    );
+  }
+
+  // Prevent path traversal attacks
+  if (folder.includes('..')) {
+    throw new Error(
+      `Invalid --image-folder: "${folder}". ` +
+      `Path traversal (..) is not allowed for security reasons.`
+    );
+  }
+
+  // Prevent shell metacharacters and problematic filesystem characters
+  // This regex covers: < > : " | ? * and control characters
+  if (/[<>:"|?*\x00-\x1f]/.test(folder)) {
+    throw new Error(
+      `Invalid --image-folder: "${folder}". ` +
+      `Contains invalid filesystem characters.`
+    );
+  }
+
+  // Prevent empty folder name
+  if (folder.trim().length === 0) {
+    throw new Error(
+      `Invalid --image-folder: folder name cannot be empty.`
+    );
+  }
+}
+
+/**
+ * Validate image path prefix for markdown URLs.
+ * Ensures prefix starts with / for absolute URLs and doesn't contain injection characters.
+ *
+ * @param prefix - The image path prefix to validate
+ * @throws {Error} If the prefix is invalid
+ */
+function validateImagePrefix(prefix: string): void {
+  // imagePrefix must start with / for absolute URLs in markdown
+  if (!prefix.startsWith('/')) {
+    throw new Error(
+      `Invalid --image-prefix: "${prefix}". ` +
+      `Must start with "/" for absolute URLs (e.g., "/images", "/assets/images").`
+    );
+  }
+
+  // Prevent potential XSS/injection in markdown
+  // While markdown renderers should escape, defense in depth
+  if (/<|>|"|'/.test(prefix)) {
+    throw new Error(
+      `Invalid --image-prefix: "${prefix}". ` +
+      `Contains invalid characters that could cause rendering issues.`
+    );
+  }
+
+  // Prevent empty prefix (after leading /)
+  if (prefix.trim().length === 1) {
+    throw new Error(
+      `Invalid --image-prefix: prefix cannot be just "/". ` +
+      `Use a path like "/images" or "/assets".`
+    );
+  }
+}
+```
 
 **Proposed Changes to `runConvert` function (around lines 268-279):**
 
@@ -1088,6 +1173,14 @@ if (!options.flat) {
 
 // Add output structure config if flat mode is enabled
 if (options.flat) {
+  // Validate user-provided values for security
+  if (options.imageFolder) {
+    validateImageFolder(options.imageFolder);
+  }
+  if (options.imagePrefix) {
+    validateImagePrefix(options.imagePrefix);
+  }
+
   conversionOptions.outputStructure = {
     mode: 'flat',
     imageFolderName: options.imageFolder,   // undefined uses default
@@ -1103,6 +1196,38 @@ if (logFilePath) {
   };
   conversionOptions.loggerConfig = loggerConfig;
 }
+```
+
+**Security Considerations**:
+
+1. **Path Traversal Prevention**: Rejects `../` sequences to prevent escaping the intended directory
+2. **Absolute Path Prevention**: Requires relative paths to prevent writing to arbitrary filesystem locations
+3. **Shell Metacharacter Prevention**: Blocks characters that could be dangerous in shell contexts
+4. **XSS Prevention**: Prevents characters that could cause issues in markdown rendering
+5. **Empty Value Prevention**: Ensures folder names and prefixes are meaningful
+
+**Validation Examples**:
+
+```typescript
+// ✅ Valid image folders
+validateImageFolder('_images');        // Default - passes
+validateImageFolder('assets');         // Custom - passes
+validateImageFolder('static/img');     // Nested - passes
+
+// ❌ Invalid image folders
+validateImageFolder('/etc/passwd');    // Absolute path - rejected
+validateImageFolder('../etc');         // Path traversal - rejected
+validateImageFolder('img<script>');    // Shell metacharacters - rejected
+
+// ✅ Valid image prefixes
+validateImagePrefix('/images');        // Default - passes
+validateImagePrefix('/assets/img');    // Custom - passes
+validateImagePrefix('/static');        // Alternative - passes
+
+// ❌ Invalid image prefixes
+validateImagePrefix('images');         // Missing leading / - rejected
+validateImagePrefix('/img<script>');   // XSS attempt - rejected
+validateImagePrefix('/');              // Too short - rejected
 ```
 
 #### Step 5.4: Update Startup Display
@@ -1137,6 +1262,13 @@ if (!options.quiet) {
 - [ ] Test `--image-folder` option passed through
 - [ ] Test `--image-prefix` option passed through
 - [ ] Test validation: `--image-folder` without `--flat` (should warn and continue)
+- [ ] Test validateImageFolder rejects absolute paths
+- [ ] Test validateImageFolder rejects path traversal (..)
+- [ ] Test validateImageFolder rejects shell metacharacters
+- [ ] Test validateImageFolder accepts valid folder names
+- [ ] Test validateImagePrefix rejects paths without leading /
+- [ ] Test validateImagePrefix rejects XSS characters
+- [ ] Test validateImagePrefix accepts valid prefixes
 
 **Test Cases for `tests/unit/cli/cli.test.ts`:**
 
@@ -1210,6 +1342,111 @@ describe('flat mode options without --flat', () => {
   it('should not build outputStructure when flat is false', async () => {
     // Even if imageFolder/imagePrefix are provided, they should be ignored
     // and outputStructure should not be set
+  });
+});
+
+describe('validateImageFolder', () => {
+  it('should accept valid relative folder names', () => {
+    expect(() => validateImageFolder('_images')).not.toThrow();
+    expect(() => validateImageFolder('assets')).not.toThrow();
+    expect(() => validateImageFolder('static/img')).not.toThrow();
+  });
+
+  it('should reject absolute paths', () => {
+    expect(() => validateImageFolder('/etc/passwd'))
+      .toThrow('Must be a relative path');
+    expect(() => validateImageFolder('/var/www/images'))
+      .toThrow('Must be a relative path');
+  });
+
+  it('should reject path traversal attempts', () => {
+    expect(() => validateImageFolder('../etc'))
+      .toThrow('Path traversal (..) is not allowed');
+    expect(() => validateImageFolder('images/../../../etc'))
+      .toThrow('Path traversal (..) is not allowed');
+  });
+
+  it('should reject shell metacharacters', () => {
+    expect(() => validateImageFolder('img<script>'))
+      .toThrow('Contains invalid filesystem characters');
+    expect(() => validateImageFolder('img|rm'))
+      .toThrow('Contains invalid filesystem characters');
+    expect(() => validateImageFolder('img*'))
+      .toThrow('Contains invalid filesystem characters');
+  });
+
+  it('should reject empty folder names', () => {
+    expect(() => validateImageFolder(''))
+      .toThrow('folder name cannot be empty');
+    expect(() => validateImageFolder('   '))
+      .toThrow('folder name cannot be empty');
+  });
+});
+
+describe('validateImagePrefix', () => {
+  it('should accept valid prefixes starting with /', () => {
+    expect(() => validateImagePrefix('/images')).not.toThrow();
+    expect(() => validateImagePrefix('/assets/img')).not.toThrow();
+    expect(() => validateImagePrefix('/static')).not.toThrow();
+  });
+
+  it('should reject prefixes not starting with /', () => {
+    expect(() => validateImagePrefix('images'))
+      .toThrow('Must start with "/"');
+    expect(() => validateImagePrefix('assets/images'))
+      .toThrow('Must start with "/"');
+  });
+
+  it('should reject XSS/injection characters', () => {
+    expect(() => validateImagePrefix('/img<script>'))
+      .toThrow('Contains invalid characters');
+    expect(() => validateImagePrefix('/img"onclick'))
+      .toThrow('Contains invalid characters');
+    expect(() => validateImagePrefix("/img'alert"))
+      .toThrow('Contains invalid characters');
+  });
+
+  it('should reject empty prefix (just "/")', () => {
+    expect(() => validateImagePrefix('/'))
+      .toThrow('prefix cannot be just "/"');
+  });
+});
+
+describe('Security integration tests', () => {
+  it('should reject conversion with malicious imageFolder', async () => {
+    await expect(runConvert({
+      export: 'export.json',
+      output: 'out',
+      flat: true,
+      imageFolder: '../../../etc',  // Path traversal attempt
+      skipExisting: true,
+      verbose: false,
+      quiet: false,
+    })).rejects.toThrow('Path traversal (..) is not allowed');
+  });
+
+  it('should reject conversion with absolute path imageFolder', async () => {
+    await expect(runConvert({
+      export: 'export.json',
+      output: 'out',
+      flat: true,
+      imageFolder: '/etc/passwd',  // Absolute path attempt
+      skipExisting: true,
+      verbose: false,
+      quiet: false,
+    })).rejects.toThrow('Must be a relative path');
+  });
+
+  it('should reject conversion with invalid imagePrefix', async () => {
+    await expect(runConvert({
+      export: 'export.json',
+      output: 'out',
+      flat: true,
+      imagePrefix: 'images',  // Missing leading /
+      skipExisting: true,
+      verbose: false,
+      quiet: false,
+    })).rejects.toThrow('Must start with "/"');
   });
 });
 ```

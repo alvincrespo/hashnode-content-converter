@@ -1,5 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { Post, PostValidationError } from '../models/post.js';
 
 /**
  * Configuration options for FileWriter service
@@ -23,6 +24,14 @@ export interface FileWriterConfig {
    * @default true
    */
   atomicWrites?: boolean;
+
+  /**
+   * Output mode for file organization:
+   * - 'nested': Creates {slug}/index.md (default)
+   * - 'flat': Creates {slug}.md directly in output directory
+   * @default 'nested'
+   */
+  outputMode?: 'nested' | 'flat';
 }
 
 /**
@@ -52,58 +61,23 @@ export class FileWriteError extends Error {
  * Handles directory creation, file writing, path validation, and error handling
  */
 export class FileWriter {
-  private readonly overwrite: boolean;
-  private readonly encoding: BufferEncoding;
-  private readonly atomicWrites: boolean;
-
-  constructor(config?: FileWriterConfig) {
-    this.overwrite = config?.overwrite ?? false;
-    this.encoding = config?.encoding ?? 'utf8';
-    this.atomicWrites = config?.atomicWrites ?? true;
-  }
+  /**
+   * Default configuration values
+   */
+  private static readonly DEFAULTS: Required<FileWriterConfig> = {
+    overwrite: false,
+    encoding: 'utf8',
+    atomicWrites: true,
+    outputMode: 'nested',
+  };
 
   /**
-   * Sanitize a slug to prevent path traversal and invalid characters
-   * @param slug - Raw slug from post metadata
-   * @returns Sanitized slug safe for filesystem use
-   * @throws FileWriteError if slug is invalid or becomes empty after sanitization
+   * Resolved configuration with defaults applied
    */
-  private sanitizeSlug(slug: string): string {
-    // Remove leading/trailing whitespace
-    let sanitized = slug.trim();
+  private readonly config: Required<FileWriterConfig>;
 
-    // Reject absolute paths
-    if (sanitized.startsWith('/')) {
-      throw new FileWriteError(
-        `Invalid slug: absolute paths are not allowed (${slug})`,
-        slug,
-        'validate_path'
-      );
-    }
-
-    // Reject parent directory traversal
-    if (sanitized.includes('..')) {
-      throw new FileWriteError(
-        `Invalid slug: parent directory traversal is not allowed (${slug})`,
-        slug,
-        'validate_path'
-      );
-    }
-
-    // Replace invalid filename characters with hyphens
-    // Invalid chars: / \ : * ? " < > |
-    sanitized = sanitized.replace(/[/\\:*?"<>|]/g, '-');
-
-    // Ensure result is not empty after sanitization
-    if (sanitized.length === 0) {
-      throw new FileWriteError(
-        `Invalid slug: slug is empty after sanitization (original: ${slug})`,
-        slug,
-        'validate_path'
-      );
-    }
-
-    return sanitized;
+  constructor(config?: FileWriterConfig) {
+    this.config = { ...FileWriter.DEFAULTS, ...config };
   }
 
   /**
@@ -118,7 +92,7 @@ export class FileWriter {
 
     // Write to temp file first
     try {
-      await fs.promises.writeFile(tempPath, content, this.encoding);
+      await fs.promises.writeFile(tempPath, content, this.config.encoding);
     } catch (error) {
       // Cleanup temp file on error (may not exist if write failed early)
       try {
@@ -163,7 +137,7 @@ export class FileWriter {
    */
   private async writeFileDirect(filePath: string, content: string): Promise<void> {
     try {
-      await fs.promises.writeFile(filePath, content, this.encoding);
+      await fs.promises.writeFile(filePath, content, this.config.encoding);
     } catch (error) {
       throw new FileWriteError(
         `Failed to write file: ${error instanceof Error ? error.message : String(error)}`,
@@ -175,41 +149,54 @@ export class FileWriter {
   }
 
   /**
-   * Check if a post already exists in the output directory
-   * @param outputDir - Base output directory
-   * @param slug - Post slug to check
-   * @returns True if post directory exists, false otherwise
+   * Ensure a directory exists, creating it if necessary.
+   * Uses mkdir with recursive:true which is idempotent (safe if directory exists).
+   * @param dirPath - Directory path to ensure exists
+   * @throws FileWriteError if directory creation fails
    */
-  postExists(outputDir: string, slug: string): boolean {
+  private async ensureDirectory(dirPath: string): Promise<void> {
     try {
-      const sanitized = this.sanitizeSlug(slug);
-      const postDir = path.join(outputDir, sanitized);
-      return fs.existsSync(postDir);
-    } catch {
-      // If sanitization fails, the post doesn't exist (invalid slug)
-      return false;
+      await fs.promises.mkdir(dirPath, { recursive: true });
+    } catch (error) {
+      throw new FileWriteError(
+        `Failed to create directory: ${error instanceof Error ? error.message : String(error)}`,
+        dirPath,
+        'create_dir',
+        error instanceof Error ? error : undefined
+      );
     }
   }
 
   /**
-   * Write a blog post with frontmatter and content to the filesystem
-   * @param outputDir - Base output directory (e.g., './blog')
-   * @param slug - Post slug (used as subdirectory name)
-   * @param frontmatter - YAML frontmatter string (includes --- markers)
-   * @param content - Markdown content body
+   * Write a Post to the filesystem.
+   * This is the preferred method for writing posts, using the Post model
+   * for path resolution and content management.
+   *
+   * @param post - Post instance with content and path info
+   * @param outputDir - Base output directory
    * @returns Absolute path to the written file
    * @throws FileWriteError if write fails or file exists (when overwrite=false)
+   *
+   * @example
+   * ```typescript
+   * const post = new Post({
+   *   slug: 'my-post',
+   *   frontmatter: '---\ntitle: My Post\n---',
+   *   content: '# Hello',
+   *   outputMode: 'flat',
+   * });
+   * const filePath = await fileWriter.write(post, './blog');
+   * ```
    */
-  async writePost(outputDir: string, slug: string, frontmatter: string, content: string): Promise<string> {
-    // Sanitize slug for filesystem safety
-    const sanitized = this.sanitizeSlug(slug);
+  async write(post: Post, outputDir: string): Promise<string> {
+    const filePath = post.getFilePath(outputDir);
+    const dirPath = post.getDirectoryPath(outputDir);
 
-    // Construct paths
-    const postDir = path.join(outputDir, sanitized);
-    const filePath = path.join(postDir, 'index.md');
+    // Ensure directory exists
+    await this.ensureDirectory(dirPath);
 
-    // Check if file exists and handle overwrite behavior
-    if (!this.overwrite && fs.existsSync(filePath)) {
+    // Check overwrite behavior
+    if (!this.config.overwrite && fs.existsSync(filePath)) {
       throw new FileWriteError(
         `File already exists and overwrite is disabled: ${filePath}`,
         filePath,
@@ -217,29 +204,65 @@ export class FileWriter {
       );
     }
 
-    // Create post directory (recursive)
-    try {
-      await fs.promises.mkdir(postDir, { recursive: true });
-    } catch (error) {
-      throw new FileWriteError(
-        `Failed to create directory: ${error instanceof Error ? error.message : String(error)}`,
-        postDir,
-        'create_dir',
-        error instanceof Error ? error : undefined
-      );
-    }
-
-    // Combine frontmatter + content
-    const markdown = frontmatter + '\n' + content;
-
-    // Write to file using selected strategy
-    if (this.atomicWrites) {
+    // Write content
+    const markdown = post.getMarkdown();
+    if (this.config.atomicWrites) {
       await this.writeFileAtomic(filePath, markdown);
     } else {
       await this.writeFileDirect(filePath, markdown);
     }
 
-    // Return absolute path to written file
     return path.resolve(filePath);
+  }
+
+  /**
+   * Check if a post already exists in the output directory.
+   * In nested mode, checks for directory existence.
+   * In flat mode, checks for {slug}.md file existence.
+   * @param outputDir - Base output directory
+   * @param slug - Post slug to check
+   * @returns True if post exists, false otherwise (including on errors)
+   */
+  postExists(outputDir: string, slug: string): boolean {
+    try {
+      const post = new Post({
+        slug,
+        frontmatter: '',
+        content: '',
+        outputMode: this.config.outputMode,
+      });
+      return fs.existsSync(post.getExistencePath(outputDir));
+    } catch (error) {
+      // Invalid slugs mean the post doesn't exist
+      if (error instanceof PostValidationError) {
+        return false;
+      }
+      // Re-throw unexpected errors (e.g., filesystem issues)
+      throw error;
+    }
+  }
+
+  /**
+   * Write a blog post with frontmatter and content to the filesystem.
+   *
+   * This method is a convenience wrapper around `write()` that creates a Post
+   * instance internally. For more control, use `write()` directly with a Post.
+   *
+   * @param outputDir - Base output directory (e.g., './blog')
+   * @param slug - Post slug (used as filename in flat mode, subdirectory in nested mode)
+   * @param frontmatter - YAML frontmatter string (includes --- markers)
+   * @param content - Markdown content body
+   * @returns Absolute path to the written file
+   * @throws PostValidationError if slug is invalid (absolute path, traversal, empty)
+   * @throws FileWriteError if write fails or file exists (when overwrite=false)
+   */
+  async writePost(outputDir: string, slug: string, frontmatter: string, content: string): Promise<string> {
+    const post = new Post({
+      slug,
+      frontmatter,
+      content,
+      outputMode: this.config.outputMode,
+    });
+    return this.write(post, outputDir);
   }
 }

@@ -8,9 +8,10 @@ import { ImageProcessor } from './processors/image-processor.js';
 import { FrontmatterGenerator } from './processors/frontmatter-generator.js';
 import { FileWriter } from './services/file-writer.js';
 import { Logger } from './services/logger.js';
+import { Post } from './models/post.js';
 
-import type { HashnodePost, HashnodeExport } from './types/hashnode-schema.js';
-import type { ConversionOptions } from './types/converter-options.js';
+import type { HashnodePost, HashnodeExport, PostMetadata } from './types/hashnode-schema.js';
+import type { ConversionOptions, OutputStructure, ConverterConfig } from './types/converter-options.js';
 import type { ConversionResult, ConvertedPost, ConversionError } from './types/conversion-result.js';
 import type {
   ConverterEventMap,
@@ -19,6 +20,7 @@ import type {
   ImageDownloadedEvent,
   ConversionErrorEvent,
 } from './types/converter-events.js';
+import type { ImageProcessingResult } from './types/image-processor.js';
 
 /**
  * Optional dependencies for testing via dependency injection
@@ -30,6 +32,12 @@ export interface ConverterDependencies {
   frontmatterGenerator?: FrontmatterGenerator;
   fileWriter?: FileWriter;
   logger?: Logger;
+
+  /**
+   * Instance-level configuration (output structure, etc.)
+   * Separate from runtime ConversionOptions
+   */
+  config?: ConverterConfig;
 }
 
 /**
@@ -69,12 +77,39 @@ export interface ConverterDependencies {
  * ```
  */
 export class Converter extends EventEmitter {
+  /**
+   * Default dependencies used when not provided via dependency injection.
+   * Creates fresh instances on each access to avoid shared state between Converter instances.
+   */
+  private static get DEFAULTS(): Required<Omit<ConverterDependencies, 'logger' | 'config'>> {
+    return {
+      postParser: new PostParser(),
+      markdownTransformer: new MarkdownTransformer(),
+      imageProcessor: new ImageProcessor(),
+      frontmatterGenerator: new FrontmatterGenerator(),
+      fileWriter: new FileWriter(),
+    };
+  }
+
+  /**
+   * Default configuration when not provided.
+   */
+  private static readonly DEFAULT_CONFIG: Required<ConverterConfig> = {
+    outputStructure: { mode: 'nested' },
+  };
+
   private postParser: PostParser;
   private markdownTransformer: MarkdownTransformer;
   private imageProcessor: ImageProcessor;
   private frontmatterGenerator: FrontmatterGenerator;
   private fileWriter: FileWriter;
   private logger: Logger | null = null;
+
+  /**
+   * Output structure configuration set at instance creation.
+   * Determines file naming and image storage location.
+   */
+  private readonly outputStructure: OutputStructure;
 
   /**
    * Create a new Converter instance.
@@ -84,17 +119,35 @@ export class Converter extends EventEmitter {
   constructor(deps?: ConverterDependencies) {
     super();
 
-    // Initialize processors and services (use injected or create new)
-    this.postParser = deps?.postParser ?? new PostParser();
-    this.markdownTransformer = deps?.markdownTransformer ?? new MarkdownTransformer();
-    this.imageProcessor = deps?.imageProcessor ?? new ImageProcessor();
-    this.frontmatterGenerator = deps?.frontmatterGenerator ?? new FrontmatterGenerator();
-    this.fileWriter = deps?.fileWriter ?? new FileWriter();
+    // Resolve config with defaults
+    const config = { ...Converter.DEFAULT_CONFIG, ...deps?.config };
+    this.outputStructure = config.outputStructure;
 
-    // Logger is initialized per-conversion in convertAllPosts
-    // to allow fresh timestamp and configuration
-    if (deps?.logger) {
-      this.logger = deps.logger;
+    // Determine output mode based on config
+    const outputMode = this.outputStructure.mode === 'flat' ? 'flat' : 'nested';
+
+    // Resolve dependencies with defaults
+    // FileWriter is configured once at construction with the instance's output mode.
+    // This single instance is used for all conversions, ensuring consistent file naming
+    // (flat: slug.md, nested: slug/index.md) throughout the instance's lifetime.
+    const defaultFileWriter = new FileWriter({ outputMode });
+    const resolved = {
+      ...Converter.DEFAULTS,
+      fileWriter: defaultFileWriter,
+      ...deps, // User-provided deps override everything
+    };
+
+    // Assign resolved dependencies
+    this.postParser = resolved.postParser;
+    this.markdownTransformer = resolved.markdownTransformer;
+    this.imageProcessor = resolved.imageProcessor;
+    this.frontmatterGenerator = resolved.frontmatterGenerator;
+    this.fileWriter = resolved.fileWriter;
+
+    // Logger is optional (can be null)
+    // Initialized per-conversion in convertAllPosts to allow fresh timestamp and configuration
+    if (resolved.logger) {
+      this.logger = resolved.logger;
     }
   }
 
@@ -127,9 +180,10 @@ export class Converter extends EventEmitter {
   static async fromExportFile(
     exportPath: string,
     outputDir: string,
-    options?: ConversionOptions
+    options?: ConversionOptions,
+    config?: ConverterConfig
   ): Promise<ConversionResult> {
-    const converter = new Converter();
+    const converter = new Converter({ config });
     return converter.convertAllPosts(exportPath, outputDir, options);
   }
 
@@ -279,7 +333,7 @@ export class Converter extends EventEmitter {
           const skipResult: ConvertedPost = {
             slug,
             title: post.title || slug,
-            outputPath: path.join(outputDir, slug, 'index.md'),
+            outputPath: this.getSkipOutputPath(outputDir, slug),
             success: true,
           };
           const completeEvent: ConversionCompletedEvent = {
@@ -379,79 +433,264 @@ export class Converter extends EventEmitter {
   ): Promise<ConvertedPost> {
     const slug = this.extractSlugSafely(post, 0);
 
-    try {
-      // Step 1: Parse post metadata
-      const metadata = this.postParser.parse(post);
-
-      // Step 2: Transform markdown (remove Hashnode quirks)
-      const transformedMarkdown = this.markdownTransformer.transform(metadata.contentMarkdown);
-
-      // Step 3: Create post directory (required by ImageProcessor)
-      const postDir = path.join(outputDir, metadata.slug);
-      if (!fs.existsSync(postDir)) {
-        fs.mkdirSync(postDir, { recursive: true });
-      }
-
-      // Step 4: Process images (download and replace URLs)
-      const imageProcessor =
-        options?.downloadOptions
-          ? new ImageProcessor(options.downloadOptions)
-          : this.imageProcessor;
-
-      const imageResult = await imageProcessor.process(transformedMarkdown, postDir);
-
-      // Emit image-downloaded events
-      this.emitImageDownloadedEvents(imageResult, metadata.slug);
-
-      // Track HTTP 403 errors with Logger
-      this.trackHttp403Errors(imageResult.errors, metadata.slug);
-
-      // Step 5: Generate frontmatter
-      const frontmatter = this.frontmatterGenerator.generate(metadata);
-
-      // Step 6: Write file
-      const outputPath = await this.fileWriter.writePost(
-        outputDir,
-        metadata.slug,
-        frontmatter,
-        imageResult.markdown
-      );
-
-      return {
-        slug: metadata.slug,
-        title: metadata.title,
-        outputPath,
-        success: true,
-      };
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-
-      // Determine error type based on error source
-      let errorType: ConversionErrorEvent['type'] = 'fatal';
-      if (errorMessage.includes('Parse error') || errorMessage.includes('Missing required field')) {
-        errorType = 'parse';
-      } else if (errorMessage.includes('Transform error')) {
-        errorType = 'transform';
-      } else if (errorMessage.includes('Failed to write') || errorMessage.includes('create directory')) {
-        errorType = 'write';
-      }
-
-      // Emit error event
-      const errorEvent: ConversionErrorEvent = {
-        type: errorType,
-        slug,
-        message: errorMessage,
-      };
-      this.emit('conversion-error', errorEvent);
-
-      return {
-        slug,
-        title: post.title || slug,
-        outputPath: '',
-        success: false,
-        error: errorMessage,
-      };
+    // Route to appropriate handler based on instance-level output mode
+    if (this.outputStructure.mode === 'flat') {
+      return this.convertPostFlat(post, slug, outputDir, options);
+    } else {
+      return this.convertPostNested(post, slug, outputDir, options);
     }
+  }
+
+  /**
+   * Parse post metadata and transform markdown content.
+   * First step in the conversion pipeline.
+   *
+   * @param post - The Hashnode post to process
+   * @returns Parsed metadata and transformed markdown
+   */
+  private parseAndTransform(post: HashnodePost): {
+    metadata: PostMetadata;
+    transformedMarkdown: string;
+  } {
+    const metadata = this.postParser.parse(post);
+    const transformedMarkdown = this.markdownTransformer.transform(metadata.contentMarkdown);
+    return { metadata, transformedMarkdown };
+  }
+
+  /**
+   * Create an ImageProcessor instance based on conversion options.
+   * When custom downloadOptions are provided, creates a new instance.
+   * Otherwise, uses the instance's default ImageProcessor.
+   *
+   * Note: Creating new instances is safe because download state is persisted
+   * via .downloaded-markers/ files on disk, not in-memory. Custom options
+   * only affect retry behavior for new/failed downloads.
+   *
+   * @param options - Conversion options that may include downloadOptions
+   * @returns ImageProcessor instance (new or default)
+   */
+  private createImageProcessor(options?: ConversionOptions): ImageProcessor {
+    return options?.downloadOptions
+      ? new ImageProcessor(options.downloadOptions)
+      : this.imageProcessor;
+  }
+
+  /**
+   * Ensure a directory exists, creating it if necessary.
+   * Creates parent directories recursively as needed.
+   *
+   * @param dir - Directory path to ensure exists
+   */
+  private ensureDirectoryExists(dir: string): void {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+  }
+
+  /**
+   * Process image result metadata: emit events and track errors.
+   * This should be called after image processing completes.
+   *
+   * @param imageResult - Result from image processing
+   * @param slug - Post slug for event identification
+   */
+  private processImageResult(imageResult: ImageProcessingResult, slug: string): void {
+    this.emitImageDownloadedEvents(imageResult, slug);
+    this.trackHttp403Errors(imageResult.errors, slug);
+  }
+
+  /**
+   * Write the final markdown file with frontmatter and content.
+   * The FileWriter instance determines the output structure (flat vs nested).
+   *
+   * @param metadata - Post metadata for slug and title
+   * @param outputDir - Output directory
+   * @param imageResult - Processed markdown with localized images
+   * @returns Path to the written file
+   */
+  private async writeMarkdownFile(
+    metadata: PostMetadata,
+    outputDir: string,
+    imageResult: ImageProcessingResult
+  ): Promise<string> {
+    const frontmatter = this.frontmatterGenerator.generate(metadata);
+    return await this.fileWriter.writePost(
+      outputDir,
+      metadata.slug,
+      frontmatter,
+      imageResult.markdown
+    );
+  }
+
+  /**
+   * Create a successful conversion result.
+   *
+   * @param metadata - Post metadata
+   * @param outputPath - Path where the file was written
+   * @returns Success result object
+   */
+  private createSuccessResult(metadata: PostMetadata, outputPath: string): ConvertedPost {
+    return {
+      slug: metadata.slug,
+      title: metadata.title,
+      outputPath,
+      success: true,
+    };
+  }
+
+  /**
+   * Convert a single post using nested output mode.
+   * Creates {slug}/index.md with images in the same directory.
+   *
+   * @private
+   */
+  private async convertPostNested(
+    post: HashnodePost,
+    slug: string,
+    outputDir: string,
+    options?: ConversionOptions
+  ): Promise<ConvertedPost> {
+    try {
+      // Parse and transform content
+      const { metadata, transformedMarkdown } = this.parseAndTransform(post);
+
+      // Set up nested structure: outputDir/slug/
+      const imageDir = path.join(outputDir, metadata.slug);
+      this.ensureDirectoryExists(imageDir);
+
+      // Process images with nested structure
+      const imageProcessor = this.createImageProcessor(options);
+      const imageResult = await imageProcessor.process(transformedMarkdown, imageDir);
+
+      // Emit events and track errors
+      this.processImageResult(imageResult, metadata.slug);
+
+      // Write file and return success
+      const outputPath = await this.writeMarkdownFile(metadata, outputDir, imageResult);
+      return this.createSuccessResult(metadata, outputPath);
+    } catch (error) {
+      return this.handleConversionError(error, slug, post);
+    }
+  }
+
+  /**
+   * Validates that outputDir is properly nested for flat mode.
+   * Flat mode requires a nested structure (e.g., /blog/_posts) to create
+   * sibling directories (e.g., /blog/_images).
+   *
+   * @param outputDir - The output directory to validate
+   * @throws {Error} If outputDir is at root or single-level
+   * @private
+   */
+  private validateFlatModeOutputPath(outputDir: string): void {
+    const normalizedPath = path.resolve(outputDir);
+    const parentDir = path.dirname(normalizedPath);
+
+    // Check if parent is root (Unix '/' or Windows 'C:/')
+    const isAtRoot =
+      parentDir === '/' ||
+      /^[A-Z]:[/\\]?$/.test(parentDir) ||
+      parentDir === normalizedPath;
+
+    if (isAtRoot) {
+      throw new Error(
+        `Invalid outputDir for flat mode: "${outputDir}"\n` +
+          `Flat mode requires a nested directory structure (e.g., "blog/_posts") ` +
+          `to create sibling image directories (e.g., "blog/_images").\n` +
+          `Current path has no valid parent directory for sibling placement.\n` +
+          `Suggestions:\n` +
+          `  - Use: "./blog/_posts" or "/path/to/blog/_posts"\n` +
+          `  - Avoid: "/output" or "./posts" (single-level paths)`
+      );
+    }
+  }
+
+  /**
+   * Convert a single post using flat output mode.
+   * Creates {slug}.md with images in a shared sibling directory.
+   *
+   * @private
+   */
+  private async convertPostFlat(
+    post: HashnodePost,
+    slug: string,
+    outputDir: string,
+    options?: ConversionOptions
+  ): Promise<ConvertedPost> {
+    try {
+      // Validate flat mode requirements
+      this.validateFlatModeOutputPath(outputDir);
+
+      // Parse and transform content
+      const { metadata, transformedMarkdown } = this.parseAndTransform(post);
+
+      // Set up flat structure: sibling image directory
+      const parentDir = path.dirname(outputDir);
+      const imageFolderName = this.outputStructure.imageFolderName ?? '_images';
+      const imageDir = path.join(parentDir, imageFolderName);
+      const imagePathPrefix = this.outputStructure.imagePathPrefix ?? '/images';
+      this.ensureDirectoryExists(imageDir);
+
+      // Process images with flat structure and custom path prefix
+      const imageProcessor = this.createImageProcessor(options);
+      const imageResult = await imageProcessor.processWithContext(transformedMarkdown, {
+        imageDir,
+        imagePathPrefix,
+      });
+
+      // Emit events and track errors
+      this.processImageResult(imageResult, metadata.slug);
+
+      // Write file and return success
+      const outputPath = await this.writeMarkdownFile(metadata, outputDir, imageResult);
+      return this.createSuccessResult(metadata, outputPath);
+    } catch (error) {
+      return this.handleConversionError(error, slug, post);
+    }
+  }
+
+  /**
+   * Handle conversion errors consistently across both modes.
+   *
+   * @private
+   */
+  private handleConversionError(
+    error: unknown,
+    slug: string,
+    post: HashnodePost
+  ): ConvertedPost {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+
+    // Determine error type based on error source
+    let errorType: ConversionErrorEvent['type'] = 'fatal';
+    if (errorMessage.includes('Parse error') || errorMessage.includes('Missing required field')) {
+      errorType = 'parse';
+    } else if (errorMessage.includes('Transform error')) {
+      errorType = 'transform';
+    } else if (
+      errorMessage.includes('Failed to write') ||
+      errorMessage.includes('create directory') ||
+      errorMessage.includes('Image directory does not exist') ||
+      errorMessage.includes('Invalid outputDir for flat mode')
+    ) {
+      errorType = 'write';
+    }
+
+    // Emit error event
+    const errorEvent: ConversionErrorEvent = {
+      type: errorType,
+      slug,
+      message: errorMessage,
+    };
+    this.emit('conversion-error', errorEvent);
+
+    return {
+      slug,
+      title: post.title || slug,
+      outputPath: '',
+      success: false,
+      error: errorMessage,
+    };
   }
 
   // ==================== Private Helper Methods ====================
@@ -615,5 +854,32 @@ export class Converter extends EventEmitter {
       .forEach((err) => {
         this.logger?.trackHttp403(slug, err.filename, err.url);
       });
+  }
+
+  /**
+   * Get the output path for a skipped post based on output mode.
+   * Creates a temporary Post instance to compute the correct path.
+   *
+   * @param outputDir - Base output directory
+   * @param slug - Post slug
+   * @returns Full path to the markdown file
+   */
+  private getSkipOutputPath(outputDir: string, slug: string): string {
+    try {
+      const outputMode = this.outputStructure.mode === 'flat' ? 'flat' : 'nested';
+      const tempPost = new Post({
+        slug,
+        frontmatter: '',
+        content: '',
+        outputMode,
+      });
+      return tempPost.getFilePath(outputDir);
+    } catch (error) {
+      // Fallback to nested format for invalid slugs
+      // This should rarely happen since postExists() validates first
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      this.logger?.warn(`Failed to compute skip path for slug "${slug}": ${errorMsg}. Using nested format fallback.`);
+      return path.join(outputDir, slug, 'index.md');
+    }
   }
 }

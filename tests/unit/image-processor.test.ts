@@ -837,4 +837,596 @@ Some text with ![external image](https://example.com/image.png)
       expect(result.markdown).toContain(cdnUrl);
     });
   });
+
+  // Category: processWithContext() - Basic Functionality (7 tests)
+  describe('processWithContext() - Basic Functionality', () => {
+    const testImageDir = '/test/blog/_images';
+    const testImagePathPrefix = '/images';
+
+    beforeEach(() => {
+      // Ensure imageDir exists
+      vi.mocked(fs.existsSync).mockImplementation((filepath: any) => {
+        const pathStr = filepath.toString();
+        if (pathStr === testImageDir) return true;
+        return false;
+      });
+    });
+
+    it('should download images to provided imageDir', async () => {
+      const markdown = '![Alt](https://cdn.hashnode.com/res/hashnode/image/upload/v1/test.png)';
+      const context = {
+        imageDir: testImageDir,
+        imagePathPrefix: testImagePathPrefix,
+      };
+
+      vi.mocked(ImageDownloader.extractHash).mockReturnValue('test.png');
+      vi.mocked(ImageDownloader.prototype.download).mockResolvedValue({ success: true });
+
+      await processor.processWithContext(markdown, context);
+
+      expect(ImageDownloader.prototype.download).toHaveBeenCalledWith(
+        'https://cdn.hashnode.com/res/hashnode/image/upload/v1/test.png',
+        path.join(testImageDir, 'test.png')
+      );
+    });
+
+    it('should use provided imagePathPrefix in markdown', async () => {
+      const markdown = '![Alt](https://cdn.hashnode.com/res/hashnode/image/upload/v1/test.png)';
+      const context = {
+        imageDir: testImageDir,
+        imagePathPrefix: testImagePathPrefix,
+      };
+
+      vi.mocked(ImageDownloader.extractHash).mockReturnValue('test.png');
+      vi.mocked(ImageDownloader.prototype.download).mockResolvedValue({ success: true });
+
+      const result = await processor.processWithContext(markdown, context);
+
+      expect(result.markdown).toContain('/images/test.png');
+      expect(result.markdown).not.toContain('./test.png');
+    });
+
+    it('should process multiple images correctly', async () => {
+      const markdown = `
+![Image 1](https://cdn.hashnode.com/res/hashnode/image/upload/v1/img1.png)
+![Image 2](https://cdn.hashnode.com/res/hashnode/image/upload/v2/img2.png)
+![Image 3](https://cdn.hashnode.com/res/hashnode/image/upload/v3/img3.png)
+`;
+      const context = {
+        imageDir: testImageDir,
+        imagePathPrefix: testImagePathPrefix,
+      };
+
+      vi.mocked(ImageDownloader.extractHash)
+        .mockReturnValueOnce('img1.png')
+        .mockReturnValueOnce('img2.png')
+        .mockReturnValueOnce('img3.png');
+      vi.mocked(ImageDownloader.prototype.download).mockResolvedValue({ success: true });
+
+      const result = await processor.processWithContext(markdown, context);
+
+      expect(result.imagesProcessed).toBe(3);
+      expect(result.imagesDownloaded).toBe(3);
+      expect(result.markdown).toContain('/images/img1.png');
+      expect(result.markdown).toContain('/images/img2.png');
+      expect(result.markdown).toContain('/images/img3.png');
+    });
+
+    it('should return correct statistics (processed, downloaded, skipped)', async () => {
+      const markdown = `
+![Downloaded](https://cdn.hashnode.com/res/hashnode/image/upload/v1/new.png)
+![Skipped](https://cdn.hashnode.com/res/hashnode/image/upload/v2/existing.png)
+`;
+      const context = {
+        imageDir: testImageDir,
+        imagePathPrefix: testImagePathPrefix,
+      };
+
+      vi.mocked(ImageDownloader.extractHash)
+        .mockReturnValueOnce('new.png')
+        .mockReturnValueOnce('existing.png');
+
+      // First image: download
+      // Second image: skip (exists with marker)
+      vi.mocked(fs.existsSync).mockImplementation((filepath: any) => {
+        const pathStr = filepath.toString();
+        if (pathStr === testImageDir) return true;
+        if (pathStr.includes('existing.png')) return true;
+        if (pathStr.includes('existing.png.marker') && !pathStr.includes('.403')) return true;
+        return false;
+      });
+      vi.mocked(fs.statSync).mockReturnValue({ size: 0 } as any);
+      vi.mocked(ImageDownloader.prototype.download).mockResolvedValue({ success: true });
+
+      const result = await processor.processWithContext(markdown, context);
+
+      expect(result.imagesProcessed).toBe(2);
+      expect(result.imagesDownloaded).toBe(1);
+      expect(result.imagesSkipped).toBe(1);
+    });
+
+    it('should handle markdown with no images', async () => {
+      const markdown = 'Just plain text with no images.';
+      const context = {
+        imageDir: testImageDir,
+        imagePathPrefix: testImagePathPrefix,
+      };
+
+      const result = await processor.processWithContext(markdown, context);
+
+      expect(result.imagesProcessed).toBe(0);
+      expect(result.imagesDownloaded).toBe(0);
+      expect(result.imagesSkipped).toBe(0);
+      expect(result.markdown).toBe(markdown);
+    });
+
+    it('should extract and process Hashnode CDN URLs only', async () => {
+      const markdown = `
+![Hashnode](https://cdn.hashnode.com/res/hashnode/image/upload/v1/test.png)
+![Other](https://example.com/image.png)
+`;
+      const context = {
+        imageDir: testImageDir,
+        imagePathPrefix: testImagePathPrefix,
+      };
+
+      vi.mocked(ImageDownloader.extractHash).mockReturnValue('test.png');
+      vi.mocked(ImageDownloader.prototype.download).mockResolvedValue({ success: true });
+
+      const result = await processor.processWithContext(markdown, context);
+
+      expect(result.imagesProcessed).toBe(1);
+      expect(ImageDownloader.prototype.download).toHaveBeenCalledTimes(1);
+    });
+
+    it('should call ImageDownloader.download() with correct arguments', async () => {
+      const cdnUrl = 'https://cdn.hashnode.com/res/hashnode/image/upload/v1/test-image.png';
+      const markdown = `![Alt](${cdnUrl})`;
+      const context = {
+        imageDir: testImageDir,
+        imagePathPrefix: testImagePathPrefix,
+      };
+
+      vi.mocked(ImageDownloader.extractHash).mockReturnValue('test-image.png');
+      vi.mocked(ImageDownloader.prototype.download).mockResolvedValue({ success: true });
+
+      await processor.processWithContext(markdown, context);
+
+      expect(ImageDownloader.prototype.download).toHaveBeenCalledWith(
+        cdnUrl,
+        path.join(testImageDir, 'test-image.png')
+      );
+    });
+  });
+
+  // Category: processWithContext() - Path Prefix Normalization (4 tests)
+  describe('processWithContext() - Path Prefix Normalization', () => {
+    const testImageDir = '/test/blog/_images';
+
+    beforeEach(() => {
+      vi.mocked(fs.existsSync).mockImplementation((filepath: any) => {
+        const pathStr = filepath.toString();
+        if (pathStr === testImageDir) return true;
+        return false;
+      });
+      vi.mocked(ImageDownloader.extractHash).mockReturnValue('test.png');
+      vi.mocked(ImageDownloader.prototype.download).mockResolvedValue({ success: true });
+    });
+
+    it('should handle imagePathPrefix with trailing slash', async () => {
+      const markdown = '![Alt](https://cdn.hashnode.com/res/hashnode/image/upload/v1/test.png)';
+      const context = {
+        imageDir: testImageDir,
+        imagePathPrefix: '/assets/',
+      };
+
+      const result = await processor.processWithContext(markdown, context);
+
+      expect(result.markdown).toContain('/assets/test.png');
+      expect(result.markdown).not.toContain('/assets//test.png');
+    });
+
+    it('should handle imagePathPrefix without trailing slash', async () => {
+      const markdown = '![Alt](https://cdn.hashnode.com/res/hashnode/image/upload/v1/test.png)';
+      const context = {
+        imageDir: testImageDir,
+        imagePathPrefix: '/assets',
+      };
+
+      const result = await processor.processWithContext(markdown, context);
+
+      expect(result.markdown).toContain('/assets/test.png');
+    });
+
+    it('should handle relative path prefix', async () => {
+      const markdown = '![Alt](https://cdn.hashnode.com/res/hashnode/image/upload/v1/test.png)';
+      const context = {
+        imageDir: testImageDir,
+        imagePathPrefix: '.',
+      };
+
+      const result = await processor.processWithContext(markdown, context);
+
+      expect(result.markdown).toContain('./test.png');
+    });
+
+    it('should handle root path prefix', async () => {
+      const markdown = '![Alt](https://cdn.hashnode.com/res/hashnode/image/upload/v1/test.png)';
+      const context = {
+        imageDir: testImageDir,
+        imagePathPrefix: '/',
+      };
+
+      const result = await processor.processWithContext(markdown, context);
+
+      expect(result.markdown).toContain('/test.png');
+      expect(result.markdown).not.toContain('//test.png');
+    });
+  });
+
+  // Category: processWithContext() - Marker Directory Handling (5 tests)
+  describe('processWithContext() - Marker Directory Handling', () => {
+    const testImageDir = '/test/blog/_images';
+    const testMarkerDir = '/test/blog/.markers';
+
+    beforeEach(() => {
+      vi.mocked(ImageDownloader.extractHash).mockReturnValue('test.png');
+      vi.mocked(ImageDownloader.prototype.download).mockResolvedValue({ success: true });
+    });
+
+    it('should create markers in imageDir by default', async () => {
+      const markdown = '![Alt](https://cdn.hashnode.com/res/hashnode/image/upload/v1/test.png)';
+      const context = {
+        imageDir: testImageDir,
+        imagePathPrefix: '/images',
+      };
+
+      // imageDir exists, but markers directory doesn't
+      vi.mocked(fs.existsSync).mockImplementation((filepath: any) => {
+        const pathStr = filepath.toString();
+        if (pathStr === testImageDir) return true;
+        if (pathStr.includes('.downloaded-markers')) return false;
+        return false;
+      });
+
+      await processor.processWithContext(markdown, context);
+
+      expect(fs.mkdirSync).toHaveBeenCalledWith(
+        path.join(testImageDir, '.downloaded-markers'),
+        { recursive: true }
+      );
+    });
+
+    it('should create markers in custom markerDir when specified', async () => {
+      const markdown = '![Alt](https://cdn.hashnode.com/res/hashnode/image/upload/v1/test.png)';
+      const context = {
+        imageDir: testImageDir,
+        imagePathPrefix: '/images',
+        markerDir: testMarkerDir,
+      };
+
+      vi.mocked(fs.existsSync).mockImplementation((filepath: any) => {
+        const pathStr = filepath.toString();
+        if (pathStr === testImageDir) return true;
+        if (pathStr.includes('.downloaded-markers')) return false;
+        return false;
+      });
+
+      await processor.processWithContext(markdown, context);
+
+      expect(fs.mkdirSync).toHaveBeenCalledWith(
+        path.join(testMarkerDir, '.downloaded-markers'),
+        { recursive: true }
+      );
+    });
+
+    it('should skip images with existing success markers', async () => {
+      const markdown = '![Alt](https://cdn.hashnode.com/res/hashnode/image/upload/v1/test.png)';
+      const context = {
+        imageDir: testImageDir,
+        imagePathPrefix: '/images',
+      };
+
+      // Success marker exists with empty size
+      vi.mocked(fs.existsSync).mockImplementation((filepath: any) => {
+        const pathStr = filepath.toString();
+        if (pathStr === testImageDir) return true;
+        if (pathStr.includes('test.png')) return true;
+        if (pathStr.includes('.marker') && !pathStr.includes('.403')) return true;
+        return false;
+      });
+      vi.mocked(fs.statSync).mockReturnValue({ size: 0 } as any);
+
+      const result = await processor.processWithContext(markdown, context);
+
+      expect(result.imagesSkipped).toBe(1);
+      expect(ImageDownloader.prototype.download).not.toHaveBeenCalled();
+    });
+
+    it('should retry images with transient error markers', async () => {
+      const markdown = '![Alt](https://cdn.hashnode.com/res/hashnode/image/upload/v1/test.png)';
+      const context = {
+        imageDir: testImageDir,
+        imagePathPrefix: '/images',
+      };
+
+      // Transient failure marker exists (size > 0)
+      vi.mocked(fs.existsSync).mockImplementation((filepath: any) => {
+        const pathStr = filepath.toString();
+        if (pathStr === testImageDir) return true;
+        if (pathStr.includes('.marker') && !pathStr.includes('.403')) return true;
+        return false;
+      });
+      vi.mocked(fs.statSync).mockReturnValue({ size: 100 } as any);
+
+      const result = await processor.processWithContext(markdown, context);
+
+      expect(result.imagesDownloaded).toBe(1);
+      expect(ImageDownloader.prototype.download).toHaveBeenCalled();
+    });
+
+    it('should skip images with 403 markers', async () => {
+      const markdown = '![Alt](https://cdn.hashnode.com/res/hashnode/image/upload/v1/test.png)';
+      const context = {
+        imageDir: testImageDir,
+        imagePathPrefix: '/images',
+      };
+
+      // 403 marker exists
+      vi.mocked(fs.existsSync).mockImplementation((filepath: any) => {
+        const pathStr = filepath.toString();
+        if (pathStr === testImageDir) return true;
+        if (pathStr.includes('.marker.403')) return true;
+        return false;
+      });
+
+      const result = await processor.processWithContext(markdown, context);
+
+      expect(result.imagesSkipped).toBe(1);
+      expect(ImageDownloader.prototype.download).not.toHaveBeenCalled();
+    });
+  });
+
+  // Category: processWithContext() - Error Handling (5 tests)
+  describe('processWithContext() - Error Handling', () => {
+    const testImageDir = '/test/blog/_images';
+    const testImagePathPrefix = '/images';
+
+    it('should throw error if imageDir does not exist', async () => {
+      const markdown = '![Alt](https://cdn.hashnode.com/res/hashnode/image/upload/v1/test.png)';
+      const context = {
+        imageDir: '/nonexistent/dir',
+        imagePathPrefix: testImagePathPrefix,
+      };
+
+      vi.mocked(fs.existsSync).mockReturnValue(false);
+
+      await expect(processor.processWithContext(markdown, context)).rejects.toThrow(
+        'Image directory does not exist: /nonexistent/dir'
+      );
+    });
+
+    it('should continue processing after download failure', async () => {
+      const markdown = `
+![Image 1](https://cdn.hashnode.com/res/hashnode/image/upload/v1/img1.png)
+![Image 2](https://cdn.hashnode.com/res/hashnode/image/upload/v2/img2.png)
+`;
+      const context = {
+        imageDir: testImageDir,
+        imagePathPrefix: testImagePathPrefix,
+      };
+
+      vi.mocked(fs.existsSync).mockImplementation((filepath: any) => {
+        const pathStr = filepath.toString();
+        if (pathStr === testImageDir) return true;
+        return false;
+      });
+      vi.mocked(ImageDownloader.extractHash)
+        .mockReturnValueOnce('img1.png')
+        .mockReturnValueOnce('img2.png');
+      vi.mocked(ImageDownloader.prototype.download)
+        .mockResolvedValueOnce({ success: false, error: 'Network error' })
+        .mockResolvedValueOnce({ success: true });
+
+      const result = await processor.processWithContext(markdown, context);
+
+      expect(result.imagesProcessed).toBe(2);
+      expect(result.imagesDownloaded).toBe(1);
+      expect(result.errors.length).toBe(1);
+    });
+
+    it('should track HTTP 403 errors separately', async () => {
+      const markdown = '![Alt](https://cdn.hashnode.com/res/hashnode/image/upload/v1/test.png)';
+      const context = {
+        imageDir: testImageDir,
+        imagePathPrefix: testImagePathPrefix,
+      };
+
+      vi.mocked(fs.existsSync).mockImplementation((filepath: any) => {
+        const pathStr = filepath.toString();
+        if (pathStr === testImageDir) return true;
+        return false;
+      });
+      vi.mocked(ImageDownloader.extractHash).mockReturnValue('test.png');
+      vi.mocked(ImageDownloader.prototype.download).mockResolvedValue({
+        success: false,
+        is403: true,
+        error: 'HTTP 403 Forbidden',
+      });
+
+      const result = await processor.processWithContext(markdown, context);
+
+      expect(result.errors.length).toBe(1);
+      expect(result.errors[0].is403).toBe(true);
+      expect(result.errors[0].error).toContain('403');
+    });
+
+    it('should track other errors with is403: false', async () => {
+      const markdown = '![Alt](https://cdn.hashnode.com/res/hashnode/image/upload/v1/test.png)';
+      const context = {
+        imageDir: testImageDir,
+        imagePathPrefix: testImagePathPrefix,
+      };
+
+      vi.mocked(fs.existsSync).mockImplementation((filepath: any) => {
+        const pathStr = filepath.toString();
+        if (pathStr === testImageDir) return true;
+        return false;
+      });
+      vi.mocked(ImageDownloader.extractHash).mockReturnValue('test.png');
+      vi.mocked(ImageDownloader.prototype.download).mockResolvedValue({
+        success: false,
+        error: 'Network timeout',
+      });
+
+      const result = await processor.processWithContext(markdown, context);
+
+      expect(result.errors.length).toBe(1);
+      expect(result.errors[0].is403).toBe(false);
+      expect(result.errors[0].error).toBe('Network timeout');
+    });
+
+    it('should keep CDN URLs for failed downloads', async () => {
+      const cdnUrl = 'https://cdn.hashnode.com/res/hashnode/image/upload/v1/failed.png';
+      const markdown = `![Alt](${cdnUrl})`;
+      const context = {
+        imageDir: testImageDir,
+        imagePathPrefix: testImagePathPrefix,
+      };
+
+      vi.mocked(fs.existsSync).mockImplementation((filepath: any) => {
+        const pathStr = filepath.toString();
+        if (pathStr === testImageDir) return true;
+        return false;
+      });
+      vi.mocked(ImageDownloader.extractHash).mockReturnValue('failed.png');
+      vi.mocked(ImageDownloader.prototype.download).mockResolvedValue({
+        success: false,
+        error: 'Download failed',
+      });
+
+      const result = await processor.processWithContext(markdown, context);
+
+      expect(result.markdown).toContain(cdnUrl);
+      expect(result.markdown).not.toContain('/images/failed.png');
+    });
+  });
+
+  // Category: processWithContext() - Edge Cases (4 tests)
+  describe('processWithContext() - Edge Cases', () => {
+    const testImageDir = '/test/blog/_images';
+    const testImagePathPrefix = '/images';
+
+    beforeEach(() => {
+      vi.mocked(fs.existsSync).mockImplementation((filepath: any) => {
+        const pathStr = filepath.toString();
+        if (pathStr === testImageDir) return true;
+        return false;
+      });
+    });
+
+    it('should handle empty markdown string', async () => {
+      const markdown = '';
+      const context = {
+        imageDir: testImageDir,
+        imagePathPrefix: testImagePathPrefix,
+      };
+
+      const result = await processor.processWithContext(markdown, context);
+
+      expect(result.imagesProcessed).toBe(0);
+      expect(result.markdown).toBe('');
+    });
+
+    it('should handle duplicate image URLs', async () => {
+      const cdnUrl = 'https://cdn.hashnode.com/res/hashnode/image/upload/v1/test.png';
+      const markdown = `
+![First](${cdnUrl})
+![Second](${cdnUrl})
+`;
+      const context = {
+        imageDir: testImageDir,
+        imagePathPrefix: testImagePathPrefix,
+      };
+
+      vi.mocked(ImageDownloader.extractHash).mockReturnValue('test.png');
+      vi.mocked(ImageDownloader.prototype.download).mockResolvedValue({ success: true });
+
+      const result = await processor.processWithContext(markdown, context);
+
+      // Both references should be replaced
+      expect(result.markdown).toContain('/images/test.png');
+      expect(result.imagesProcessed).toBe(2);
+    });
+
+    it('should handle invalid URL (no extractable hash)', async () => {
+      const markdown = '![Alt](https://cdn.hashnode.com/res/hashnode/invalid)';
+      const context = {
+        imageDir: testImageDir,
+        imagePathPrefix: testImagePathPrefix,
+      };
+
+      vi.mocked(ImageDownloader.extractHash).mockReturnValue(null);
+
+      const result = await processor.processWithContext(markdown, context);
+
+      expect(result.errors.length).toBe(1);
+      expect(result.errors[0].filename).toBe('unknown');
+      expect(result.errors[0].error).toContain('Could not extract hash');
+    });
+
+    it('should handle ImageDownloader throwing exception', async () => {
+      const markdown = '![Alt](https://cdn.hashnode.com/res/hashnode/image/upload/v1/test.png)';
+      const context = {
+        imageDir: testImageDir,
+        imagePathPrefix: testImagePathPrefix,
+      };
+
+      vi.mocked(ImageDownloader.extractHash).mockReturnValue('test.png');
+      vi.mocked(ImageDownloader.prototype.download).mockRejectedValue(
+        new Error('Unexpected network error')
+      );
+
+      const result = await processor.processWithContext(markdown, context);
+
+      expect(result.errors.length).toBe(1);
+      expect(result.errors[0].error).toContain('Unexpected network error');
+    });
+  });
+
+  // Category: Backwards Compatibility (2 tests)
+  describe('Backwards Compatibility', () => {
+    it('should keep existing process() method unchanged', async () => {
+      const markdown = '![Alt](https://cdn.hashnode.com/res/hashnode/image/upload/v1/test.png)';
+
+      vi.mocked(ImageDownloader.extractHash).mockReturnValue('test.png');
+      vi.mocked(ImageDownloader.prototype.download).mockResolvedValue({ success: true });
+
+      const result = await processor.process(markdown, testBlogDir);
+
+      // process() should use hardcoded './' prefix
+      expect(result.markdown).toContain('./test.png');
+      expect(result.markdown).not.toContain('/images/test.png');
+    });
+
+    it('should have existing tests still pass', async () => {
+      // This is a smoke test to ensure the original process() method still works
+      const markdown = `
+![Image 1](https://cdn.hashnode.com/res/hashnode/image/upload/v1/img1.png)
+![Image 2](https://cdn.hashnode.com/res/hashnode/image/upload/v2/img2.png)
+`;
+
+      vi.mocked(ImageDownloader.extractHash)
+        .mockReturnValueOnce('img1.png')
+        .mockReturnValueOnce('img2.png');
+      vi.mocked(ImageDownloader.prototype.download).mockResolvedValue({ success: true });
+
+      const result = await processor.process(markdown, testBlogDir);
+
+      expect(result.imagesProcessed).toBe(2);
+      expect(result.imagesDownloaded).toBe(2);
+      expect(result.markdown).toContain('./img1.png');
+      expect(result.markdown).toContain('./img2.png');
+    });
+  });
 });

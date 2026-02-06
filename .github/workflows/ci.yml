@@ -5,8 +5,8 @@ on:
     branches:
       - main
   pull_request:
-    branches:
-      - main
+    # Run CI on all pull requests regardless of target branch
+    # This ensures sub-branches merged into feature branches are tested
 
 jobs:
   test:
