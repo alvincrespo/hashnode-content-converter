@@ -33,6 +33,12 @@ interface CLIOptions {
   verbose: boolean;
   /** Suppress progress output */
   quiet: boolean;
+  /** Enable flat output mode ({slug}.md instead of {slug}/index.md) */
+  flat: boolean;
+  /** Image folder name in flat mode (default: _images) */
+  imageFolder?: string;
+  /** Image path prefix in flat mode (default: /images) */
+  imagePrefix?: string;
 }
 
 /**
