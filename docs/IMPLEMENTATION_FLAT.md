@@ -1066,9 +1066,92 @@ program
 ```
 
 #### Step 5.3: Build outputStructure from CLI Options
+- [ ] Add validation functions for imageFolder and imagePrefix (security)
 - [ ] Create `OutputStructure` object when `--flat` is set
+- [ ] Validate imageFolder and imagePrefix before use
 - [ ] Pass through to `ConversionOptions`
 - [ ] Warn if `--image-folder` or `--image-prefix` are used without `--flat`
+
+**Security Note**: This step includes path validation to prevent directory traversal attacks and injection vulnerabilities.
+
+**Proposed Changes to `src/cli/convert.ts` - Add validation functions (after imports, around line 20):**
+
+```typescript
+/**
+ * Validate image folder name for security.
+ * Prevents path traversal, absolute paths, and shell metacharacters.
+ *
+ * @param folder - The image folder name to validate
+ * @throws {Error} If the folder name is invalid
+ */
+function validateImageFolder(folder: string): void {
+  // Prevent absolute paths - image folder must be relative
+  if (path.isAbsolute(folder)) {
+    throw new Error(
+      `Invalid --image-folder: "${folder}". ` +
+      `Must be a relative path (e.g., "_images", "assets").`
+    );
+  }
+
+  // Prevent path traversal attacks
+  if (folder.includes('..')) {
+    throw new Error(
+      `Invalid --image-folder: "${folder}". ` +
+      `Path traversal (..) is not allowed for security reasons.`
+    );
+  }
+
+  // Prevent shell metacharacters and problematic filesystem characters
+  // This regex covers: < > : " | ? * and control characters
+  if (/[<>:"|?*\x00-\x1f]/.test(folder)) {
+    throw new Error(
+      `Invalid --image-folder: "${folder}". ` +
+      `Contains invalid filesystem characters.`
+    );
+  }
+
+  // Prevent empty folder name
+  if (folder.trim().length === 0) {
+    throw new Error(
+      `Invalid --image-folder: folder name cannot be empty.`
+    );
+  }
+}
+
+/**
+ * Validate image path prefix for markdown URLs.
+ * Ensures prefix starts with / for absolute URLs and doesn't contain injection characters.
+ *
+ * @param prefix - The image path prefix to validate
+ * @throws {Error} If the prefix is invalid
+ */
+function validateImagePrefix(prefix: string): void {
+  // imagePrefix must start with / for absolute URLs in markdown
+  if (!prefix.startsWith('/')) {
+    throw new Error(
+      `Invalid --image-prefix: "${prefix}". ` +
+      `Must start with "/" for absolute URLs (e.g., "/images", "/assets/images").`
+    );
+  }
+
+  // Prevent potential XSS/injection in markdown
+  // While markdown renderers should escape, defense in depth
+  if (/<|>|"|'/.test(prefix)) {
+    throw new Error(
+      `Invalid --image-prefix: "${prefix}". ` +
+      `Contains invalid characters that could cause rendering issues.`
+    );
+  }
+
+  // Prevent empty prefix (after leading /)
+  if (prefix.trim().length === 1) {
+    throw new Error(
+      `Invalid --image-prefix: prefix cannot be just "/". ` +
+      `Use a path like "/images" or "/assets".`
+    );
+  }
+}
+```
 
 **Proposed Changes to `runConvert` function (around lines 268-279):**
 
@@ -1090,6 +1173,14 @@ if (!options.flat) {
 
 // Add output structure config if flat mode is enabled
 if (options.flat) {
+  // Validate user-provided values for security
+  if (options.imageFolder) {
+    validateImageFolder(options.imageFolder);
+  }
+  if (options.imagePrefix) {
+    validateImagePrefix(options.imagePrefix);
+  }
+
   conversionOptions.outputStructure = {
     mode: 'flat',
     imageFolderName: options.imageFolder,   // undefined uses default
@@ -1105,6 +1196,38 @@ if (logFilePath) {
   };
   conversionOptions.loggerConfig = loggerConfig;
 }
+```
+
+**Security Considerations**:
+
+1. **Path Traversal Prevention**: Rejects `../` sequences to prevent escaping the intended directory
+2. **Absolute Path Prevention**: Requires relative paths to prevent writing to arbitrary filesystem locations
+3. **Shell Metacharacter Prevention**: Blocks characters that could be dangerous in shell contexts
+4. **XSS Prevention**: Prevents characters that could cause issues in markdown rendering
+5. **Empty Value Prevention**: Ensures folder names and prefixes are meaningful
+
+**Validation Examples**:
+
+```typescript
+// ✅ Valid image folders
+validateImageFolder('_images');        // Default - passes
+validateImageFolder('assets');         // Custom - passes
+validateImageFolder('static/img');     // Nested - passes
+
+// ❌ Invalid image folders
+validateImageFolder('/etc/passwd');    // Absolute path - rejected
+validateImageFolder('../etc');         // Path traversal - rejected
+validateImageFolder('img<script>');    // Shell metacharacters - rejected
+
+// ✅ Valid image prefixes
+validateImagePrefix('/images');        // Default - passes
+validateImagePrefix('/assets/img');    // Custom - passes
+validateImagePrefix('/static');        // Alternative - passes
+
+// ❌ Invalid image prefixes
+validateImagePrefix('images');         // Missing leading / - rejected
+validateImagePrefix('/img<script>');   // XSS attempt - rejected
+validateImagePrefix('/');              // Too short - rejected
 ```
 
 #### Step 5.4: Update Startup Display
@@ -1139,6 +1262,13 @@ if (!options.quiet) {
 - [ ] Test `--image-folder` option passed through
 - [ ] Test `--image-prefix` option passed through
 - [ ] Test validation: `--image-folder` without `--flat` (should warn and continue)
+- [ ] Test validateImageFolder rejects absolute paths
+- [ ] Test validateImageFolder rejects path traversal (..)
+- [ ] Test validateImageFolder rejects shell metacharacters
+- [ ] Test validateImageFolder accepts valid folder names
+- [ ] Test validateImagePrefix rejects paths without leading /
+- [ ] Test validateImagePrefix rejects XSS characters
+- [ ] Test validateImagePrefix accepts valid prefixes
 
 **Test Cases for `tests/unit/cli/cli.test.ts`:**
 
@@ -1212,6 +1342,111 @@ describe('flat mode options without --flat', () => {
   it('should not build outputStructure when flat is false', async () => {
     // Even if imageFolder/imagePrefix are provided, they should be ignored
     // and outputStructure should not be set
+  });
+});
+
+describe('validateImageFolder', () => {
+  it('should accept valid relative folder names', () => {
+    expect(() => validateImageFolder('_images')).not.toThrow();
+    expect(() => validateImageFolder('assets')).not.toThrow();
+    expect(() => validateImageFolder('static/img')).not.toThrow();
+  });
+
+  it('should reject absolute paths', () => {
+    expect(() => validateImageFolder('/etc/passwd'))
+      .toThrow('Must be a relative path');
+    expect(() => validateImageFolder('/var/www/images'))
+      .toThrow('Must be a relative path');
+  });
+
+  it('should reject path traversal attempts', () => {
+    expect(() => validateImageFolder('../etc'))
+      .toThrow('Path traversal (..) is not allowed');
+    expect(() => validateImageFolder('images/../../../etc'))
+      .toThrow('Path traversal (..) is not allowed');
+  });
+
+  it('should reject shell metacharacters', () => {
+    expect(() => validateImageFolder('img<script>'))
+      .toThrow('Contains invalid filesystem characters');
+    expect(() => validateImageFolder('img|rm'))
+      .toThrow('Contains invalid filesystem characters');
+    expect(() => validateImageFolder('img*'))
+      .toThrow('Contains invalid filesystem characters');
+  });
+
+  it('should reject empty folder names', () => {
+    expect(() => validateImageFolder(''))
+      .toThrow('folder name cannot be empty');
+    expect(() => validateImageFolder('   '))
+      .toThrow('folder name cannot be empty');
+  });
+});
+
+describe('validateImagePrefix', () => {
+  it('should accept valid prefixes starting with /', () => {
+    expect(() => validateImagePrefix('/images')).not.toThrow();
+    expect(() => validateImagePrefix('/assets/img')).not.toThrow();
+    expect(() => validateImagePrefix('/static')).not.toThrow();
+  });
+
+  it('should reject prefixes not starting with /', () => {
+    expect(() => validateImagePrefix('images'))
+      .toThrow('Must start with "/"');
+    expect(() => validateImagePrefix('assets/images'))
+      .toThrow('Must start with "/"');
+  });
+
+  it('should reject XSS/injection characters', () => {
+    expect(() => validateImagePrefix('/img<script>'))
+      .toThrow('Contains invalid characters');
+    expect(() => validateImagePrefix('/img"onclick'))
+      .toThrow('Contains invalid characters');
+    expect(() => validateImagePrefix("/img'alert"))
+      .toThrow('Contains invalid characters');
+  });
+
+  it('should reject empty prefix (just "/")', () => {
+    expect(() => validateImagePrefix('/'))
+      .toThrow('prefix cannot be just "/"');
+  });
+});
+
+describe('Security integration tests', () => {
+  it('should reject conversion with malicious imageFolder', async () => {
+    await expect(runConvert({
+      export: 'export.json',
+      output: 'out',
+      flat: true,
+      imageFolder: '../../../etc',  // Path traversal attempt
+      skipExisting: true,
+      verbose: false,
+      quiet: false,
+    })).rejects.toThrow('Path traversal (..) is not allowed');
+  });
+
+  it('should reject conversion with absolute path imageFolder', async () => {
+    await expect(runConvert({
+      export: 'export.json',
+      output: 'out',
+      flat: true,
+      imageFolder: '/etc/passwd',  // Absolute path attempt
+      skipExisting: true,
+      verbose: false,
+      quiet: false,
+    })).rejects.toThrow('Must be a relative path');
+  });
+
+  it('should reject conversion with invalid imagePrefix', async () => {
+    await expect(runConvert({
+      export: 'export.json',
+      output: 'out',
+      flat: true,
+      imagePrefix: 'images',  // Missing leading /
+      skipExisting: true,
+      verbose: false,
+      quiet: false,
+    })).rejects.toThrow('Must start with "/"');
   });
 });
 ```
