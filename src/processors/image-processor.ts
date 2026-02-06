@@ -62,7 +62,7 @@ export class ImageProcessor {
    * constructor(options?: ImageProcessorOptions, downloader?: ImageDownloader)
    * ```
    * This would enable proper mocking without conditional assertions in tests.
-   * See: docs/features/flat/PHASE_4_STEP_4_3.md#future-improvements
+   * @see https://github.com/alvincrespo/hashnode-content-converter/issues/87
    */
   constructor(options?: ImageProcessorOptions) {
     // Set defaults matching reference implementation
@@ -74,7 +74,7 @@ export class ImageProcessor {
     };
 
     // Create ImageDownloader with configuration
-    // TODO: Make this injectable via optional constructor parameter
+    // TODO: Make this injectable via optional constructor parameter (Issue #87)
     this.downloader = new ImageDownloader({
       maxRetries: this.options.maxRetries,
       retryDelayMs: this.options.retryDelayMs,

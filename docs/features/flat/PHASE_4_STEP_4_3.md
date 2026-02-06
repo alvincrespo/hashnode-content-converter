@@ -774,7 +774,7 @@ constructor(
 - Improves test predictability and eliminates false positives
 - Maintains backward compatibility (optional parameter)
 
-**Tracking**: See GitHub issue for implementation details
+**Tracking**: [Issue #87 - Refactor ImageProcessor to support ImageDownloader dependency injection](https://github.com/alvincrespo/hashnode-content-converter/issues/87)
 
 ---
 
