@@ -983,35 +983,16 @@ describe('Flat Output Mode', () => {
 
 **Why this matters:** The marker-based download state is persisted on disk, not in-memory. This means multiple `ImageProcessor` instances safely share state, but this isn't obvious when reading the code.
 
-**Proposed Changes to `src/processors/image-processor.ts`:**
+**Implementation Details:**
 
-Add to class-level JSDoc:
+The `ImageProcessor` class JSDoc in `src/processors/image-processor.ts` now includes a comprehensive "Instance Independence" section explaining how multiple instances safely share state via disk-persisted marker files.
 
-```typescript
-/**
- * Instance Independence:
- * Because download state is persisted to disk via marker files (not in-memory),
- * multiple ImageProcessor instances safely share state. Creating a new instance
- * with different options won't cause re-downloading of already-downloaded images.
- * This design enables:
- * - Safe per-conversion custom options (different retry settings)
- * - Resumable downloads across process restarts
- * - Parallel processing without state conflicts
- */
-```
+The `Converter.createImageProcessor()` method in `src/converter.ts` includes JSDoc that explains:
+- When custom downloadOptions are provided, a new ImageProcessor instance is created
+- Creating new instances is safe because download state is persisted via `.downloaded-markers/` files on disk
+- Custom options only affect retry behavior for new/failed downloads
 
-**Proposed Changes to `src/converter.ts`:**
-
-Add comment at `downloadOptions` check:
-
-```typescript
-// Note: Creating a new ImageProcessor with custom downloadOptions is safe because
-// download state is persisted via .downloaded-markers/ files on disk, not in-memory.
-// A new instance will read existing markers and skip already-downloaded images.
-const imageProcessor = options?.downloadOptions
-  ? new ImageProcessor(options.downloadOptions)
-  : this.imageProcessor;
-```
+See the existing implementation for complete documentation.
 
 ---
 
