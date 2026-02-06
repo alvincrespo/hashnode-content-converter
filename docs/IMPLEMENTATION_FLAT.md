@@ -902,13 +902,13 @@ if (effectiveOptions.skipExisting && existenceChecker.postExists(outputDir, slug
 ```
 
 #### Step 4.3: Write Converter Integration Tests
-- [ ] Test full pipeline in flat mode
-- [ ] Test image directory creation as sibling
-- [ ] Test image path prefix in output markdown
-- [ ] Test post existence check with flat files
-- [ ] Test custom `imageFolderName` option
-- [ ] Test custom `imagePathPrefix` option
-- [ ] Test nested mode unchanged (regression)
+- [x] Test full pipeline in flat mode
+- [x] Test image directory creation as sibling
+- [x] Test image path prefix in output markdown
+- [x] Test post existence check with flat files
+- [x] Test custom `imageFolderName` option
+- [x] Test custom `imagePathPrefix` option
+- [x] Test nested mode unchanged (regression)
 
 **Test Cases for `tests/integration/converter.test.ts`:**
 
