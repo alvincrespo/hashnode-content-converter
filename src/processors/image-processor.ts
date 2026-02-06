@@ -27,6 +27,16 @@ import type {
  *   - Transient failure: `.marker` file with error message (will retry)
  *   - Permanent failure (403): `.marker.403` file (won't retry)
  *
+ * Instance Independence:
+ * Because download state is persisted to disk via marker files
+ * (not in-memory), multiple ImageProcessor instances safely share
+ * state. Creating a new instance with different options won't cause
+ * re-downloading of already-downloaded images. This design enables:
+ * - Safe per-conversion custom options (different retry settings)
+ * - Resumable downloads across process restarts
+ * - Parallel processing without state conflicts
+ * - Shared image deduplication in flat mode
+ *
  * @example
  * ```typescript
  * const processor = new ImageProcessor({
