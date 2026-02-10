@@ -6,6 +6,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Converter } from '../converter.js';
+import type { ConverterDependencies } from '../converter.js';
 import type { ConversionOptions, LoggerConfig } from '../types/converter-options.js';
 import type { ConversionResult } from '../types/conversion-result.js';
 
@@ -147,6 +148,78 @@ export function validateMutuallyExclusiveFlags(verbose: boolean, quiet: boolean)
 }
 
 /**
+ * Validate image folder name for security.
+ * Prevents path traversal, absolute paths, and shell metacharacters.
+ *
+ * @param folder - The image folder name to validate
+ * @throws {Error} If the folder name is invalid
+ */
+export function validateImageFolder(folder: string): void {
+  // Prevent empty folder name
+  if (folder.trim().length === 0) {
+    throw new Error(
+      `Invalid --image-folder: folder name cannot be empty.`
+    );
+  }
+
+  // Prevent absolute paths - image folder must be relative
+  if (path.isAbsolute(folder)) {
+    throw new Error(
+      `Invalid --image-folder: "${folder}". ` +
+      `Must be a relative path (e.g., "_images", "assets").`
+    );
+  }
+
+  // Prevent path traversal attacks
+  if (folder.includes('..')) {
+    throw new Error(
+      `Invalid --image-folder: "${folder}". ` +
+      `Path traversal (..) is not allowed for security reasons.`
+    );
+  }
+
+  // Reject characters that could be misinterpreted in shell contexts
+  // (< > | * ? for globbing/redirection/piping, : " for quoting),
+  // plus control characters (U+0000–U+001F) which are not valid in filenames.
+  const hasInvalidChars = /[<>:"|?*]/.test(folder);
+  const hasControlChars = [...folder].some(c => c.charCodeAt(0) <= 0x1f);
+  if (hasInvalidChars || hasControlChars) {
+    throw new Error(
+      `Invalid --image-folder: "${folder}". ` +
+      `Contains invalid filesystem characters.`
+    );
+  }
+}
+
+/**
+ * Validate image path prefix for markdown URLs.
+ * Ensures prefix starts with / for absolute URLs and doesn't contain injection characters.
+ *
+ * @param prefix - The image path prefix to validate
+ * @throws {Error} If the prefix is invalid
+ */
+export function validateImagePrefix(prefix: string): void {
+  // imagePrefix must start with / for absolute URLs in markdown
+  if (!prefix.startsWith('/')) {
+    throw new Error(
+      `Invalid --image-prefix: "${prefix}". ` +
+      `Must start with "/" for absolute URLs (e.g., "/images", "/assets/images").`
+    );
+  }
+
+  // Allowlist: only permit characters safe for URL paths and markdown link
+  // destinations. The prefix is interpolated into ![alt](prefix/file.png),
+  // so characters like ), whitespace, or control chars could break markdown
+  // parsing or enable injection.
+  if (!/^\/[A-Za-z0-9._\-/]+$/.test(prefix)) {
+    throw new Error(
+      `Invalid --image-prefix: "${prefix}". ` +
+      `Only alphanumeric characters, hyphens, underscores, dots, and forward slashes are allowed.`
+    );
+  }
+}
+
+/**
  * Validate all CLI options by delegating to specific validators
  * @param options - Parsed CLI options
  * @returns Validated and resolved paths
@@ -275,6 +348,38 @@ async function runConvert(options: CLIOptions): Promise<void> {
       console.log('');
     }
 
+    // Warn if flat-mode-only options are used without --flat
+    if (!options.flat) {
+      if (options.imageFolder) {
+        console.warn('Warning: --image-folder is ignored without --flat');
+      }
+      if (options.imagePrefix) {
+        console.warn('Warning: --image-prefix is ignored without --flat');
+      }
+    }
+
+    // Build converter dependencies with output structure config
+    let converterDeps: ConverterDependencies | undefined;
+    if (options.flat) {
+      // Validate user-provided values for security
+      if (options.imageFolder) {
+        validateImageFolder(options.imageFolder);
+      }
+      if (options.imagePrefix) {
+        validateImagePrefix(options.imagePrefix);
+      }
+
+      converterDeps = {
+        config: {
+          outputStructure: {
+            mode: 'flat',
+            imageFolderName: options.imageFolder,   // undefined uses default '_images'
+            imagePathPrefix: options.imagePrefix,    // undefined uses default '/images'
+          },
+        },
+      };
+    }
+
     // Build conversion options
     const conversionOptions: ConversionOptions = {
       skipExisting: options.skipExisting,
@@ -289,9 +394,9 @@ async function runConvert(options: CLIOptions): Promise<void> {
       conversionOptions.loggerConfig = loggerConfig;
     }
 
-    // Create converter with progress callback
+    // Create converter with progress callback and optional flat mode config
     const progressCallback = createProgressCallback(options.quiet, options.verbose);
-    const converter = Converter.withProgress(progressCallback);
+    const converter = Converter.withProgress(progressCallback, converterDeps);
 
     // Run conversion
     const result = await converter.convertAllPosts(exportPath, outputPath, conversionOptions);

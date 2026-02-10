@@ -10,11 +10,15 @@ import {
   validateLogFilePath,
   validateMutuallyExclusiveFlags,
   validateOptions,
+  validateImageFolder,
+  validateImagePrefix,
   createProgressBar,
   createProgressCallback,
   displayResult,
   program,
+  runConvert,
 } from '../../src/cli/convert.js';
+import { Converter } from '../../src/converter.js';
 import type { ConversionResult } from '../../src/types/conversion-result.js';
 
 // Mock fs module
@@ -520,6 +524,237 @@ describe('CLI', () => {
       expect(convertCmd).toBeDefined();
       const option = convertCmd!.options.find(opt => opt.long === '--image-prefix');
       expect(option).toBeDefined();
+    });
+  });
+
+  // ===========================================================================
+  // validateImageFolder Tests
+  // ===========================================================================
+  describe('validateImageFolder', () => {
+    it('should accept valid relative folder names', () => {
+      expect(() => validateImageFolder('_images')).not.toThrow();
+      expect(() => validateImageFolder('assets')).not.toThrow();
+      expect(() => validateImageFolder('static/img')).not.toThrow();
+    });
+
+    it('should accept hyphenated and underscored names', () => {
+      expect(() => validateImageFolder('my-images')).not.toThrow();
+      expect(() => validateImageFolder('my_images')).not.toThrow();
+    });
+
+    it('should reject absolute paths', () => {
+      expect(() => validateImageFolder('/etc/passwd'))
+        .toThrow('Must be a relative path');
+      expect(() => validateImageFolder('/var/www/images'))
+        .toThrow('Must be a relative path');
+    });
+
+    it('should reject path traversal attempts', () => {
+      expect(() => validateImageFolder('../etc'))
+        .toThrow('Path traversal (..) is not allowed');
+      expect(() => validateImageFolder('images/../../../etc'))
+        .toThrow('Path traversal (..) is not allowed');
+    });
+
+    it('should reject shell metacharacters', () => {
+      expect(() => validateImageFolder('img<script>'))
+        .toThrow('Contains invalid filesystem characters');
+      expect(() => validateImageFolder('img|rm'))
+        .toThrow('Contains invalid filesystem characters');
+      expect(() => validateImageFolder('img*'))
+        .toThrow('Contains invalid filesystem characters');
+    });
+
+    it('should reject empty folder names', () => {
+      expect(() => validateImageFolder(''))
+        .toThrow('folder name cannot be empty');
+      expect(() => validateImageFolder('   '))
+        .toThrow('folder name cannot be empty');
+    });
+
+    it('should reject names with control characters', () => {
+      expect(() => validateImageFolder('img\x00name'))
+        .toThrow('Contains invalid filesystem characters');
+    });
+  });
+
+  // ===========================================================================
+  // validateImagePrefix Tests
+  // ===========================================================================
+  describe('validateImagePrefix', () => {
+    it('should accept valid prefixes starting with /', () => {
+      expect(() => validateImagePrefix('/images')).not.toThrow();
+      expect(() => validateImagePrefix('/assets/img')).not.toThrow();
+      expect(() => validateImagePrefix('/static')).not.toThrow();
+    });
+
+    it('should accept nested path prefixes', () => {
+      expect(() => validateImagePrefix('/assets/images/blog')).not.toThrow();
+    });
+
+    it('should reject prefixes not starting with /', () => {
+      expect(() => validateImagePrefix('images'))
+        .toThrow('Must start with "/"');
+      expect(() => validateImagePrefix('assets/images'))
+        .toThrow('Must start with "/"');
+    });
+
+    it('should reject characters outside the allowlist', () => {
+      expect(() => validateImagePrefix('/img<script>'))
+        .toThrow('Only alphanumeric characters');
+      expect(() => validateImagePrefix('/img"onclick'))
+        .toThrow('Only alphanumeric characters');
+      expect(() => validateImagePrefix("/img'alert"))
+        .toThrow('Only alphanumeric characters');
+    });
+
+    it('should reject ) which breaks markdown link destinations', () => {
+      expect(() => validateImagePrefix('/images)'))
+        .toThrow('Only alphanumeric characters');
+    });
+
+    it('should reject whitespace and control characters', () => {
+      expect(() => validateImagePrefix('/my images'))
+        .toThrow('Only alphanumeric characters');
+      expect(() => validateImagePrefix('/images\t'))
+        .toThrow('Only alphanumeric characters');
+      expect(() => validateImagePrefix('/images\n'))
+        .toThrow('Only alphanumeric characters');
+    });
+
+    it('should reject prefix that is just "/"', () => {
+      expect(() => validateImagePrefix('/'))
+        .toThrow('Only alphanumeric characters');
+    });
+  });
+
+  // ===========================================================================
+  // runConvert Flat Mode Wiring Tests
+  // ===========================================================================
+  describe('runConvert flat mode wiring', () => {
+    let mockConvertAllPosts: ReturnType<typeof vi.fn>;
+    let withProgressSpy: ReturnType<typeof vi.spyOn>;
+    let consoleWarnSpy: ReturnType<typeof vi.spyOn>;
+    let consoleLogSpy: ReturnType<typeof vi.spyOn>;
+    let stdoutSpy: ReturnType<typeof vi.spyOn>;
+    let processExitSpy: ReturnType<typeof vi.spyOn>;
+
+    const baseOptions = {
+      export: './export.json',
+      output: './output',
+      skipExisting: true,
+      verbose: false,
+      quiet: true,
+      flat: false,
+    };
+
+    beforeEach(() => {
+      // Mock filesystem for validateOptions
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.statSync).mockReturnValue({ isFile: () => true } as fs.Stats);
+      vi.mocked(fs.readFileSync).mockReturnValue('{"posts": []}');
+
+      // Mock console output
+      consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+
+      // Mock process.exit to prevent test termination
+      processExitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+
+      // Mock Converter.withProgress to capture deps
+      mockConvertAllPosts = vi.fn().mockResolvedValue({
+        converted: 1,
+        skipped: 0,
+        errors: [],
+        duration: '1s',
+      });
+      withProgressSpy = vi.spyOn(Converter, 'withProgress').mockReturnValue({
+        convertAllPosts: mockConvertAllPosts,
+      } as unknown as Converter);
+    });
+
+    afterEach(() => {
+      consoleWarnSpy.mockRestore();
+      consoleLogSpy.mockRestore();
+      stdoutSpy.mockRestore();
+      processExitSpy.mockRestore();
+      withProgressSpy.mockRestore();
+    });
+
+    it('should warn when --image-folder is used without --flat', async () => {
+      await runConvert({ ...baseOptions, imageFolder: 'assets' });
+
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        'Warning: --image-folder is ignored without --flat'
+      );
+    });
+
+    it('should warn when --image-prefix is used without --flat', async () => {
+      await runConvert({ ...baseOptions, imagePrefix: '/static' });
+
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        'Warning: --image-prefix is ignored without --flat'
+      );
+    });
+
+    it('should not warn when flat-only options are used with --flat', async () => {
+      await runConvert({
+        ...baseOptions,
+        flat: true,
+        imageFolder: 'assets',
+        imagePrefix: '/static',
+      });
+
+      expect(consoleWarnSpy).not.toHaveBeenCalled();
+    });
+
+    it('should pass outputStructure config to Converter.withProgress in flat mode', async () => {
+      await runConvert({ ...baseOptions, flat: true });
+
+      expect(withProgressSpy).toHaveBeenCalledWith(
+        expect.any(Function),
+        expect.objectContaining({
+          config: {
+            outputStructure: {
+              mode: 'flat',
+              imageFolderName: undefined,
+              imagePathPrefix: undefined,
+            },
+          },
+        })
+      );
+    });
+
+    it('should pass custom imageFolder and imagePrefix in flat mode config', async () => {
+      await runConvert({
+        ...baseOptions,
+        flat: true,
+        imageFolder: 'assets',
+        imagePrefix: '/static',
+      });
+
+      expect(withProgressSpy).toHaveBeenCalledWith(
+        expect.any(Function),
+        expect.objectContaining({
+          config: {
+            outputStructure: {
+              mode: 'flat',
+              imageFolderName: 'assets',
+              imagePathPrefix: '/static',
+            },
+          },
+        })
+      );
+    });
+
+    it('should not pass converter deps in nested mode', async () => {
+      await runConvert(baseOptions);
+
+      expect(withProgressSpy).toHaveBeenCalledWith(
+        expect.any(Function),
+        undefined
+      );
     });
   });
 });

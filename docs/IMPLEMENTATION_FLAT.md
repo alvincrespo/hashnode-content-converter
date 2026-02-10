@@ -255,14 +255,12 @@ export interface OutputStructure {
 }
 ```
 
-**Proposed Changes to `ConversionOptions` interface:**
+**Proposed Changes to `ConverterConfig` interface:**
+
+> **Note**: `outputStructure` is an instance-level concern (determines file naming and image storage for the lifetime of a Converter), so it belongs on `ConverterConfig` rather than the runtime `ConversionOptions`.
 
 ```typescript
-export interface ConversionOptions {
-  skipExisting?: boolean;
-  downloadOptions?: ImageDownloadOptions;
-  loggerConfig?: LoggerConfig;
-
+export interface ConverterConfig {
   /**
    * Output structure configuration.
    * Controls file naming and image storage location.
@@ -1069,7 +1067,7 @@ program
 - [ ] Add validation functions for imageFolder and imagePrefix (security)
 - [ ] Create `OutputStructure` object when `--flat` is set
 - [ ] Validate imageFolder and imagePrefix before use
-- [ ] Pass through to `ConversionOptions`
+- [ ] Pass through to `ConverterConfig` via `ConverterDependencies`
 - [ ] Warn if `--image-folder` or `--image-prefix` are used without `--flat`
 
 **Security Note**: This step includes path validation to prevent directory traversal attacks and injection vulnerabilities.
@@ -1155,12 +1153,9 @@ function validateImagePrefix(prefix: string): void {
 
 **Proposed Changes to `runConvert` function (around lines 268-279):**
 
-```typescript
-// Build conversion options
-const conversionOptions: ConversionOptions = {
-  skipExisting: options.skipExisting,
-};
+> **Note**: `outputStructure` is passed via `ConverterDependencies.config` (instance-level), not `ConversionOptions` (runtime). The Converter reads it at construction time.
 
+```typescript
 // Warn if flat-mode-only options are used without --flat
 if (!options.flat) {
   if (options.imageFolder) {
@@ -1171,7 +1166,8 @@ if (!options.flat) {
   }
 }
 
-// Add output structure config if flat mode is enabled
+// Build converter dependencies with output structure config
+let converterDeps: ConverterDependencies | undefined;
 if (options.flat) {
   // Validate user-provided values for security
   if (options.imageFolder) {
@@ -1181,12 +1177,21 @@ if (options.flat) {
     validateImagePrefix(options.imagePrefix);
   }
 
-  conversionOptions.outputStructure = {
-    mode: 'flat',
-    imageFolderName: options.imageFolder,   // undefined uses default
-    imagePathPrefix: options.imagePrefix,   // undefined uses default
+  converterDeps = {
+    config: {
+      outputStructure: {
+        mode: 'flat',
+        imageFolderName: options.imageFolder,   // undefined uses default '_images'
+        imagePathPrefix: options.imagePrefix,    // undefined uses default '/images'
+      },
+    },
   };
 }
+
+// Build conversion options (runtime settings)
+const conversionOptions: ConversionOptions = {
+  skipExisting: options.skipExisting,
+};
 
 // Add logger config if log file specified
 if (logFilePath) {
@@ -1196,6 +1201,10 @@ if (logFilePath) {
   };
   conversionOptions.loggerConfig = loggerConfig;
 }
+
+// Create converter with progress callback and optional flat mode config
+const progressCallback = createProgressCallback(options.quiet, options.verbose);
+const converter = Converter.withProgress(progressCallback, converterDeps);
 ```
 
 **Security Considerations**:
