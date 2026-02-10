@@ -1018,9 +1018,9 @@ const imageProcessor = options?.downloadOptions
 ### Phase 5: CLI Updates
 
 #### Step 5.1: Update CLIOptions Interface
-- [ ] Add `flat` boolean flag
-- [ ] Add `imageFolder` optional string
-- [ ] Add `imagePrefix` optional string
+- [x] Add `flat` boolean flag
+- [x] Add `imageFolder` optional string
+- [x] Add `imagePrefix` optional string
 
 **Proposed Changes to `src/cli/convert.ts`:**
 
