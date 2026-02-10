@@ -45,6 +45,12 @@ export interface LoggerConfig {
 }
 
 /**
+ * Default name for the shared image folder in flat output mode.
+ * Used when `OutputStructure.imageFolderName` is not specified.
+ */
+export const DEFAULT_IMAGE_FOLDER = '_images';
+
+/**
  * Output structure configuration for the conversion process.
  * Controls how posts and images are organized on disk.
  */

@@ -11,6 +11,7 @@ import { Logger } from './services/logger.js';
 import { Post } from './models/post.js';
 
 import type { HashnodePost, HashnodeExport, PostMetadata } from './types/hashnode-schema.js';
+import { DEFAULT_IMAGE_FOLDER } from './types/converter-options.js';
 import type { ConversionOptions, OutputStructure, ConverterConfig } from './types/converter-options.js';
 import type { ConversionResult, ConvertedPost, ConversionError } from './types/conversion-result.js';
 import type {
@@ -626,7 +627,7 @@ export class Converter extends EventEmitter {
 
       // Set up flat structure: sibling image directory
       const parentDir = path.dirname(outputDir);
-      const imageFolderName = this.outputStructure.imageFolderName ?? '_images';
+      const imageFolderName = this.outputStructure.imageFolderName ?? DEFAULT_IMAGE_FOLDER;
       const imageDir = path.join(parentDir, imageFolderName);
       const imagePathPrefix = this.outputStructure.imagePathPrefix ?? '/images';
       this.ensureDirectoryExists(imageDir);

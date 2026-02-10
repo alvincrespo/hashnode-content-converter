@@ -790,7 +790,7 @@ describe('CLI', () => {
         );
       });
 
-      it('should not display Mode line when quiet is true', async () => {
+      it('should not display Mode line when quiet flag is enabled', async () => {
         await runConvert({ ...baseOptions, quiet: true, flat: true });
 
         const logCalls = consoleLogSpy.mock.calls.map(call => call[0]);
