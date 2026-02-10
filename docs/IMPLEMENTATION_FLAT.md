@@ -1266,20 +1266,20 @@ if (!options.quiet) {
 ```
 
 #### Step 5.5: Write CLI Unit Tests
-- [ ] Test `--flat` flag sets `flat: true`
-- [ ] Test `--flat` defaults to `false`
-- [ ] Test `--image-folder` option passed through
-- [ ] Test `--image-prefix` option passed through
-- [ ] Test validation: `--image-folder` without `--flat` (should warn and continue)
-- [ ] Test validateImageFolder rejects absolute paths
-- [ ] Test validateImageFolder rejects path traversal (..)
-- [ ] Test validateImageFolder rejects shell metacharacters
-- [ ] Test validateImageFolder accepts valid folder names
-- [ ] Test validateImagePrefix rejects paths without leading /
-- [ ] Test validateImagePrefix rejects XSS characters
-- [ ] Test validateImagePrefix accepts valid prefixes
+- [x] Test `--flat` flag sets `flat: true`
+- [x] Test `--flat` defaults to `false`
+- [x] Test `--image-folder` option passed through
+- [x] Test `--image-prefix` option passed through
+- [x] Test validation: `--image-folder` without `--flat` (should warn and continue)
+- [x] Test validateImageFolder rejects absolute paths
+- [x] Test validateImageFolder rejects path traversal (..)
+- [x] Test validateImageFolder rejects shell metacharacters
+- [x] Test validateImageFolder accepts valid folder names
+- [x] Test validateImagePrefix rejects paths without leading /
+- [x] Test validateImagePrefix rejects XSS characters
+- [x] Test validateImagePrefix accepts valid prefixes
 
-**Test Cases for `tests/unit/cli/cli.test.ts`:**
+**Test Cases for `tests/unit/cli.test.ts`:**
 
 ```typescript
 describe('--flat flag', () => {
@@ -1497,7 +1497,7 @@ export type { ImageProcessorContext } from './types/image-processor';
 |-----------|-----------|-------|
 | FileWriter | `tests/unit/services/file-writer.test.ts` | ~8 new tests |
 | ImageProcessor | `tests/unit/processors/image-processor.test.ts` | ~10 new tests |
-| CLI | `tests/unit/cli/cli.test.ts` | ~6 new tests |
+| CLI | `tests/unit/cli.test.ts` | ~6 new tests |
 
 ### Integration Tests to Add
 
