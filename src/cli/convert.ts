@@ -342,6 +342,9 @@ program
   .option('--no-skip-existing', 'Overwrite posts that already exist')
   .option('-v, --verbose', 'Enable verbose output', false)
   .option('-q, --quiet', 'Suppress progress output (only show summary)', false)
+  .option('-f, --flat', 'Use flat output mode ({slug}.md instead of {slug}/index.md)', false)
+  .option('--image-folder <name>', 'Image folder name in flat mode (default: _images)')
+  .option('--image-prefix <prefix>', 'Image path prefix in flat mode (default: /images)')
   .action(async (options: CLIOptions) => {
     await runConvert(options);
   });
