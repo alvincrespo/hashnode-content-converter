@@ -178,9 +178,12 @@ export function validateImageFolder(folder: string): void {
     );
   }
 
-  // Prevent shell metacharacters and problematic filesystem characters
-  // This regex covers: < > : " | ? * and control characters
-  if (/[<>:"|?*\x00-\x1f]/.test(folder)) {
+  // Reject characters that could be misinterpreted in shell contexts
+  // (< > | * ? for globbing/redirection/piping, : " for quoting),
+  // plus control characters (U+0000–U+001F) which are not valid in filenames.
+  const hasInvalidChars = /[<>:"|?*]/.test(folder);
+  const hasControlChars = [...folder].some(c => c.charCodeAt(0) <= 0x1f);
+  if (hasInvalidChars || hasControlChars) {
     throw new Error(
       `Invalid --image-folder: "${folder}". ` +
       `Contains invalid filesystem characters.`
