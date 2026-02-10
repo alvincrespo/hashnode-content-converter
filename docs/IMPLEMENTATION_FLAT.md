@@ -1240,8 +1240,8 @@ validateImagePrefix('/');              // Too short - rejected
 ```
 
 #### Step 5.4: Update Startup Display
-- [ ] Show output mode (nested/flat) in startup info
-- [ ] Show image folder name when in flat mode
+- [x] Show output mode (nested/flat) in startup info
+- [x] Show image folder name when in flat mode
 
 **Proposed Changes to startup display (around lines 256-265):**
 

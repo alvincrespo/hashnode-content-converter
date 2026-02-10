@@ -341,6 +341,12 @@ async function runConvert(options: CLIOptions): Promise<void> {
       console.log('\nHashnode Content Converter');
       console.log(`Export:  ${exportPath}`);
       console.log(`Output:  ${outputPath}`);
+      if (options.flat) {
+        const imageFolder = options.imageFolder ?? '_images';
+        console.log(`Mode:    flat (images -> ../${imageFolder}/)`);
+      } else {
+        console.log(`Mode:    nested ({slug}/index.md)`);
+      }
       if (logFilePath) {
         console.log(`Log:     ${logFilePath}`);
       }

@@ -756,5 +756,49 @@ describe('CLI', () => {
         undefined
       );
     });
+
+    // =========================================================================
+    // Startup Display: Mode line
+    // =========================================================================
+    describe('startup display Mode line', () => {
+      it('should display nested mode when flat is false', async () => {
+        await runConvert({ ...baseOptions, quiet: false, flat: false });
+
+        expect(consoleLogSpy).toHaveBeenCalledWith(
+          'Mode:    nested ({slug}/index.md)'
+        );
+      });
+
+      it('should display flat mode with default image folder', async () => {
+        await runConvert({ ...baseOptions, quiet: false, flat: true });
+
+        expect(consoleLogSpy).toHaveBeenCalledWith(
+          'Mode:    flat (images -> ../_images/)'
+        );
+      });
+
+      it('should display flat mode with custom image folder', async () => {
+        await runConvert({
+          ...baseOptions,
+          quiet: false,
+          flat: true,
+          imageFolder: 'assets',
+        });
+
+        expect(consoleLogSpy).toHaveBeenCalledWith(
+          'Mode:    flat (images -> ../assets/)'
+        );
+      });
+
+      it('should not display Mode line when quiet is true', async () => {
+        await runConvert({ ...baseOptions, quiet: true, flat: true });
+
+        const logCalls = consoleLogSpy.mock.calls.map(call => call[0]);
+        const hasModeCall = logCalls.some(
+          (arg: unknown) => typeof arg === 'string' && (arg as string).startsWith('Mode:')
+        );
+        expect(hasModeCall).toBe(false);
+      });
+    });
   });
 });
