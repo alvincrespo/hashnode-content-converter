@@ -7,6 +7,7 @@ import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Converter } from '../converter.js';
 import type { ConverterDependencies } from '../converter.js';
+import { DEFAULT_IMAGE_FOLDER } from '../types/converter-options.js';
 import type { ConversionOptions, LoggerConfig } from '../types/converter-options.js';
 import type { ConversionResult } from '../types/conversion-result.js';
 
@@ -341,6 +342,12 @@ async function runConvert(options: CLIOptions): Promise<void> {
       console.log('\nHashnode Content Converter');
       console.log(`Export:  ${exportPath}`);
       console.log(`Output:  ${outputPath}`);
+      if (options.flat) {
+        const imageFolder = options.imageFolder ?? DEFAULT_IMAGE_FOLDER;
+        console.log(`Mode:    flat (images -> ../${imageFolder}/)`);
+      } else {
+        console.log(`Mode:    nested ({slug}/index.md)`);
+      }
       if (logFilePath) {
         console.log(`Log:     ${logFilePath}`);
       }
