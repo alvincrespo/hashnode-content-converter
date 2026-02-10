@@ -1040,10 +1040,10 @@ interface CLIOptions {
 ```
 
 #### Step 5.2: Add CLI Flags
-- [ ] Add `-f, --flat` boolean flag
-- [ ] Add `--image-folder <name>` option
-- [ ] Add `--image-prefix <prefix>` option
-- [ ] Update help text
+- [x] Add `-f, --flat` boolean flag
+- [x] Add `--image-folder <name>` option
+- [x] Add `--image-prefix <prefix>` option
+- [x] Update help text
 
 **Proposed Changes to CLI setup (around lines 325-336):**
 
