@@ -1064,11 +1064,11 @@ program
 ```
 
 #### Step 5.3: Build outputStructure from CLI Options
-- [ ] Add validation functions for imageFolder and imagePrefix (security)
-- [ ] Create `OutputStructure` object when `--flat` is set
-- [ ] Validate imageFolder and imagePrefix before use
-- [ ] Pass through to `ConverterConfig` via `ConverterDependencies`
-- [ ] Warn if `--image-folder` or `--image-prefix` are used without `--flat`
+- [x] Add validation functions for imageFolder and imagePrefix (security)
+- [x] Create `OutputStructure` object when `--flat` is set
+- [x] Validate imageFolder and imagePrefix before use
+- [x] Pass through to `ConverterConfig` via `ConverterDependencies`
+- [x] Warn if `--image-folder` or `--image-prefix` are used without `--flat`
 
 **Security Note**: This step includes path validation to prevent directory traversal attacks and injection vulnerabilities.
 

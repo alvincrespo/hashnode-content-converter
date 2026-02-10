@@ -536,29 +536,29 @@ nvm use $(cat .node-version) && npm run test:coverage
 ## Implementation Checklist
 
 ### Phase 1: Core Implementation
-- [ ] Add `validateImageFolder` function
-- [ ] Add `validateImagePrefix` function
-- [ ] Add `ConverterDependencies` type import
-- [ ] Add orphaned option warnings to `runConvert`
-- [ ] Build `ConverterDependencies` with `config.outputStructure` when `--flat` is set
-- [ ] Pass `converterDeps` to `Converter.withProgress()`
-- [ ] Export new validation functions
+- [x] Add `validateImageFolder` function
+- [x] Add `validateImagePrefix` function
+- [x] Add `ConverterDependencies` type import
+- [x] Add orphaned option warnings to `runConvert`
+- [x] Build `ConverterDependencies` with `config.outputStructure` when `--flat` is set
+- [x] Pass `converterDeps` to `Converter.withProgress()`
+- [x] Export new validation functions
 
 ### Phase 2: Testing
-- [ ] Add `validateImageFolder` test suite (~7 tests)
-- [ ] Add `validateImagePrefix` test suite (~5 tests)
-- [ ] Add orphaned option warning tests (~2 tests)
-- [ ] Verify all existing tests pass
+- [x] Add `validateImageFolder` test suite (~7 tests)
+- [x] Add `validateImagePrefix` test suite (~5 tests)
+- [x] Add orphaned option warning tests (~2 tests)
+- [x] Verify all existing tests pass
 
 ### Phase 3: Verification
-- [ ] Run type-check
-- [ ] Run build
-- [ ] Run tests
-- [ ] Review coverage report
+- [x] Run type-check
+- [x] Run build
+- [x] Run tests
+- [x] Review coverage report
 
 ### Phase 4: Documentation
-- [ ] Update IMPLEMENTATION_FLAT.md checkboxes for Step 5.3
-- [ ] Update GitHub issue #56
+- [x] Update IMPLEMENTATION_FLAT.md checkboxes for Step 5.3
+- [x] Update GitHub issue #56
 
 ---
 
