@@ -1279,7 +1279,7 @@ if (!options.quiet) {
 - [x] Test validateImagePrefix rejects XSS characters
 - [x] Test validateImagePrefix accepts valid prefixes
 
-**Test Cases for `tests/unit/cli/cli.test.ts`:**
+**Test Cases for `tests/unit/cli.test.ts`:**
 
 ```typescript
 describe('--flat flag', () => {
@@ -1497,7 +1497,7 @@ export type { ImageProcessorContext } from './types/image-processor';
 |-----------|-----------|-------|
 | FileWriter | `tests/unit/services/file-writer.test.ts` | ~8 new tests |
 | ImageProcessor | `tests/unit/processors/image-processor.test.ts` | ~10 new tests |
-| CLI | `tests/unit/cli/cli.test.ts` | ~6 new tests |
+| CLI | `tests/unit/cli.test.ts` | ~6 new tests |
 
 ### Integration Tests to Add
 
