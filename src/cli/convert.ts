@@ -207,20 +207,14 @@ export function validateImagePrefix(prefix: string): void {
     );
   }
 
-  // Prevent potential XSS/injection in markdown
-  // While markdown renderers should escape, defense in depth
-  if (/<|>|"|'/.test(prefix)) {
+  // Allowlist: only permit characters safe for URL paths and markdown link
+  // destinations. The prefix is interpolated into ![alt](prefix/file.png),
+  // so characters like ), whitespace, or control chars could break markdown
+  // parsing or enable injection.
+  if (!/^\/[A-Za-z0-9._\-/]+$/.test(prefix)) {
     throw new Error(
       `Invalid --image-prefix: "${prefix}". ` +
-      `Contains invalid characters that could cause rendering issues.`
-    );
-  }
-
-  // Prevent empty prefix (after leading /)
-  if (prefix.trim().length === 1) {
-    throw new Error(
-      `Invalid --image-prefix: prefix cannot be just "/". ` +
-      `Use a path like "/images" or "/assets".`
+      `Only alphanumeric characters, hyphens, underscores, dots, and forward slashes are allowed.`
     );
   }
 }

@@ -597,18 +597,32 @@ describe('CLI', () => {
         .toThrow('Must start with "/"');
     });
 
-    it('should reject XSS/injection characters', () => {
+    it('should reject characters outside the allowlist', () => {
       expect(() => validateImagePrefix('/img<script>'))
-        .toThrow('Contains invalid characters');
+        .toThrow('Only alphanumeric characters');
       expect(() => validateImagePrefix('/img"onclick'))
-        .toThrow('Contains invalid characters');
+        .toThrow('Only alphanumeric characters');
       expect(() => validateImagePrefix("/img'alert"))
-        .toThrow('Contains invalid characters');
+        .toThrow('Only alphanumeric characters');
+    });
+
+    it('should reject ) which breaks markdown link destinations', () => {
+      expect(() => validateImagePrefix('/images)'))
+        .toThrow('Only alphanumeric characters');
+    });
+
+    it('should reject whitespace and control characters', () => {
+      expect(() => validateImagePrefix('/my images'))
+        .toThrow('Only alphanumeric characters');
+      expect(() => validateImagePrefix('/images\t'))
+        .toThrow('Only alphanumeric characters');
+      expect(() => validateImagePrefix('/images\n'))
+        .toThrow('Only alphanumeric characters');
     });
 
     it('should reject prefix that is just "/"', () => {
       expect(() => validateImagePrefix('/'))
-        .toThrow('prefix cannot be just "/"');
+        .toThrow('Only alphanumeric characters');
     });
   });
 });
