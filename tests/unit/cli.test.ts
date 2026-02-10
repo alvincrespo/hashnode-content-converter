@@ -10,6 +10,8 @@ import {
   validateLogFilePath,
   validateMutuallyExclusiveFlags,
   validateOptions,
+  validateImageFolder,
+  validateImagePrefix,
   createProgressBar,
   createProgressCallback,
   displayResult,
@@ -520,6 +522,93 @@ describe('CLI', () => {
       expect(convertCmd).toBeDefined();
       const option = convertCmd!.options.find(opt => opt.long === '--image-prefix');
       expect(option).toBeDefined();
+    });
+  });
+
+  // ===========================================================================
+  // validateImageFolder Tests
+  // ===========================================================================
+  describe('validateImageFolder', () => {
+    it('should accept valid relative folder names', () => {
+      expect(() => validateImageFolder('_images')).not.toThrow();
+      expect(() => validateImageFolder('assets')).not.toThrow();
+      expect(() => validateImageFolder('static/img')).not.toThrow();
+    });
+
+    it('should accept hyphenated and underscored names', () => {
+      expect(() => validateImageFolder('my-images')).not.toThrow();
+      expect(() => validateImageFolder('my_images')).not.toThrow();
+    });
+
+    it('should reject absolute paths', () => {
+      expect(() => validateImageFolder('/etc/passwd'))
+        .toThrow('Must be a relative path');
+      expect(() => validateImageFolder('/var/www/images'))
+        .toThrow('Must be a relative path');
+    });
+
+    it('should reject path traversal attempts', () => {
+      expect(() => validateImageFolder('../etc'))
+        .toThrow('Path traversal (..) is not allowed');
+      expect(() => validateImageFolder('images/../../../etc'))
+        .toThrow('Path traversal (..) is not allowed');
+    });
+
+    it('should reject shell metacharacters', () => {
+      expect(() => validateImageFolder('img<script>'))
+        .toThrow('Contains invalid filesystem characters');
+      expect(() => validateImageFolder('img|rm'))
+        .toThrow('Contains invalid filesystem characters');
+      expect(() => validateImageFolder('img*'))
+        .toThrow('Contains invalid filesystem characters');
+    });
+
+    it('should reject empty folder names', () => {
+      expect(() => validateImageFolder(''))
+        .toThrow('folder name cannot be empty');
+      expect(() => validateImageFolder('   '))
+        .toThrow('folder name cannot be empty');
+    });
+
+    it('should reject names with control characters', () => {
+      expect(() => validateImageFolder('img\x00name'))
+        .toThrow('Contains invalid filesystem characters');
+    });
+  });
+
+  // ===========================================================================
+  // validateImagePrefix Tests
+  // ===========================================================================
+  describe('validateImagePrefix', () => {
+    it('should accept valid prefixes starting with /', () => {
+      expect(() => validateImagePrefix('/images')).not.toThrow();
+      expect(() => validateImagePrefix('/assets/img')).not.toThrow();
+      expect(() => validateImagePrefix('/static')).not.toThrow();
+    });
+
+    it('should accept nested path prefixes', () => {
+      expect(() => validateImagePrefix('/assets/images/blog')).not.toThrow();
+    });
+
+    it('should reject prefixes not starting with /', () => {
+      expect(() => validateImagePrefix('images'))
+        .toThrow('Must start with "/"');
+      expect(() => validateImagePrefix('assets/images'))
+        .toThrow('Must start with "/"');
+    });
+
+    it('should reject XSS/injection characters', () => {
+      expect(() => validateImagePrefix('/img<script>'))
+        .toThrow('Contains invalid characters');
+      expect(() => validateImagePrefix('/img"onclick'))
+        .toThrow('Contains invalid characters');
+      expect(() => validateImagePrefix("/img'alert"))
+        .toThrow('Contains invalid characters');
+    });
+
+    it('should reject prefix that is just "/"', () => {
+      expect(() => validateImagePrefix('/'))
+        .toThrow('prefix cannot be just "/"');
     });
   });
 });
