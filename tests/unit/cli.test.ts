@@ -13,6 +13,7 @@ import {
   createProgressBar,
   createProgressCallback,
   displayResult,
+  program,
 } from '../../src/cli/convert.js';
 import type { ConversionResult } from '../../src/types/conversion-result.js';
 
@@ -492,6 +493,33 @@ describe('CLI', () => {
         call => typeof call[0] === 'string' && call[0].includes('\r')
       );
       expect(clearCalls.length).toBe(0);
+    });
+  });
+
+  // ===========================================================================
+  // Flat Mode CLI Flag Registration Tests
+  // ===========================================================================
+  describe('Flat mode CLI flags', () => {
+    it('should register --flat flag with short alias -f on convert command', () => {
+      const convertCmd = program.commands.find(cmd => cmd.name() === 'convert');
+      expect(convertCmd).toBeDefined();
+      const flatOption = convertCmd!.options.find(opt => opt.long === '--flat');
+      expect(flatOption).toBeDefined();
+      expect(flatOption!.short).toBe('-f');
+    });
+
+    it('should register --image-folder option on convert command', () => {
+      const convertCmd = program.commands.find(cmd => cmd.name() === 'convert');
+      expect(convertCmd).toBeDefined();
+      const option = convertCmd!.options.find(opt => opt.long === '--image-folder');
+      expect(option).toBeDefined();
+    });
+
+    it('should register --image-prefix option on convert command', () => {
+      const convertCmd = program.commands.find(cmd => cmd.name() === 'convert');
+      expect(convertCmd).toBeDefined();
+      const option = convertCmd!.options.find(opt => opt.long === '--image-prefix');
+      expect(option).toBeDefined();
     });
   });
 });
