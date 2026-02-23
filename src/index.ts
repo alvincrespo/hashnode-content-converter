@@ -40,7 +40,14 @@ export type { ConverterDependencies } from './converter.js';
 // Type Definitions
 // -----------------------------------------------------------------------------
 export * from './types/hashnode-schema.js';
-export * from './types/converter-options.js';
+export type {
+  ConversionOptions,
+  ConverterConfig,
+  ImageDownloadOptions,
+  LoggerConfig,
+  OutputStructure,
+} from './types/converter-options.js';
+export { DEFAULT_IMAGE_FOLDER } from './types/converter-options.js';
 export * from './types/conversion-result.js';
 export * from './types/converter-events.js';
 

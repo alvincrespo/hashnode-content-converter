@@ -1465,8 +1465,8 @@ describe('Security integration tests', () => {
 ### Phase 6: Exports and Documentation
 
 #### Step 6.1: Update Public Exports
-- [ ] Export `OutputStructure` type from `src/index.ts`
-- [ ] Export `ImageProcessorContext` type from `src/index.ts`
+- [x] Export `OutputStructure` type from `src/index.ts`
+- [x] Export `ImageProcessorContext` type from `src/index.ts`
 
 **Proposed Changes to `src/index.ts`:**
 
