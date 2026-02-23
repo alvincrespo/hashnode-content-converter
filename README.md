@@ -12,6 +12,7 @@ Convert Hashnode blog exports to framework-agnostic Markdown with YAML frontmatt
 - **Metadata Extraction**: Parse Hashnode exports and extract essential post metadata (title, slug, dates, tags, cover image)
 - **Markdown Transformation**: Clean Hashnode-specific formatting quirks (align attributes, trailing whitespace)
 - **Image Localization**: Download CDN images and replace URLs with local paths
+- **Flat Output Mode**: Optional `--flat` flag creates `{slug}.md` files with shared image folder, ideal for Bridgetown, Jekyll, and Hugo
 - **Intelligent Retry**: Marker-based strategy to skip already-downloaded images and permanent failures
 - **YAML Frontmatter**: Generate framework-agnostic frontmatter from post metadata
 - **Atomic File Operations**: Safe, atomic writes with directory traversal protection
@@ -63,10 +64,74 @@ npx @alvincrespo/hashnode-content-converter convert \
 | `--no-skip-existing` | | Overwrite existing posts | |
 | `--verbose` | `-v` | Show detailed output including image downloads | `false` |
 | `--quiet` | `-q` | Suppress all output except errors | `false` |
+| `--flat` | `-f` | Use flat output mode (`{slug}.md` instead of `{slug}/index.md`) | `false` |
+| `--image-folder <name>` | | Image folder name (flat mode only) | `_images` |
+| `--image-prefix <prefix>` | | Image path prefix in markdown (flat mode only) | `/images` |
 
 **Exit Codes**:
 - `0` - Conversion completed successfully
 - `1` - Conversion completed with errors, or validation failed
+
+### Output Modes
+
+The converter supports two output modes for organizing posts and images.
+
+#### Nested Mode (Default)
+
+Each post gets its own directory with images alongside:
+
+```
+output/
+├── my-first-post/
+│   ├── index.md          # Image refs: ./image.png
+│   └── image.png
+├── my-second-post/
+│   ├── index.md
+│   └── screenshot.png
+```
+
+#### Flat Mode (`--flat`)
+
+Standalone `.md` files with images in a shared sibling folder:
+
+```bash
+npx @alvincrespo/hashnode-content-converter convert \
+  --export ./export.json \
+  --output ./src/_posts \
+  --flat
+```
+
+```
+src/
+├── _posts/
+│   ├── my-first-post.md      # Image refs: /images/image.png
+│   └── my-second-post.md
+└── _images/
+    ├── image.png
+    └── screenshot.png
+```
+
+Customize the image folder and path prefix for your framework:
+
+```bash
+# Hugo-style assets
+npx @alvincrespo/hashnode-content-converter convert \
+  --export ./export.json \
+  --output ./content/posts \
+  --flat \
+  --image-folder assets \
+  --image-prefix /assets
+```
+
+#### When to Use Each Mode
+
+| Criteria | Nested (default) | Flat (`--flat`) |
+|----------|-------------------|-----------------|
+| **Best for** | Self-contained posts | Bridgetown, Jekyll, Hugo, Next.js |
+| **Post files** | `{slug}/index.md` | `{slug}.md` |
+| **Image location** | Per-post directory | Shared sibling folder |
+| **Image paths** | Relative (`./image.png`) | Absolute (`/images/image.png`) |
+| **Image deduplication** | No (per-post copies) | Yes (shared folder) |
 
 ### Programmatic API
 
@@ -80,6 +145,45 @@ import { Converter } from '@alvincrespo/hashnode-content-converter';
 // One-liner conversion
 const result = await Converter.fromExportFile('./export.json', './blog');
 console.log(`Converted ${result.converted} posts in ${result.duration}`);
+```
+
+#### Flat Mode
+
+Configure flat output mode at the instance level via `ConverterConfig`:
+
+```typescript
+import { Converter } from '@alvincrespo/hashnode-content-converter';
+
+// Flat mode with default settings (_images folder, /images prefix)
+const converter = new Converter({
+  config: {
+    outputStructure: { mode: 'flat' },
+  },
+});
+const result = await converter.convertAllPosts('./export.json', './src/_posts');
+
+// Flat mode with custom image settings (e.g., for Hugo)
+const hugoConverter = new Converter({
+  config: {
+    outputStructure: {
+      mode: 'flat',
+      imageFolderName: 'assets',
+      imagePathPrefix: '/assets',
+    },
+  },
+});
+await hugoConverter.convertAllPosts('./export.json', './content/posts');
+```
+
+Or use the static factory method:
+
+```typescript
+const result = await Converter.fromExportFile(
+  './export.json',
+  './src/_posts',
+  { skipExisting: true },                    // ConversionOptions
+  { outputStructure: { mode: 'flat' } }      // ConverterConfig
+);
 ```
 
 #### With Progress Tracking
@@ -346,7 +450,7 @@ If you're migrating from the original `convert-hashnode.js` script, here are the
 |-----------------|--------------|
 | Environment variables (`EXPORT_DIR`, `READ_DIR`) | CLI arguments (`--export`, `--output`) |
 | Hardcoded paths | User-specified paths |
-| Single output format | Same output format, more control |
+| Single output format | Nested (default) or flat mode (`--flat`) |
 
 ### Migration Steps
 
@@ -366,10 +470,11 @@ If you're migrating from the original `convert-hashnode.js` script, here are the
      --output ./blog
    ```
 
-3. **Output format**: The generated Markdown files maintain the same structure:
+3. **Output format**: The generated Markdown files maintain the same structure by default:
    - YAML frontmatter with title, date, description, cover image
    - Cleaned markdown content (align attributes removed)
-   - Downloaded images in post directories
+   - Downloaded images in post directories (nested mode, default)
+   - Or use `--flat` for standalone `.md` files with shared image folder (see [Output Modes](#output-modes))
 
 ### Programmatic Migration
 

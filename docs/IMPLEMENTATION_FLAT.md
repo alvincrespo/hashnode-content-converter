@@ -1477,10 +1477,10 @@ export type { ImageProcessorContext } from './types/image-processor';
 ```
 
 #### Step 6.2: Update README
-- [ ] Add flat mode to CLI options table
-- [ ] Add flat mode usage example
-- [ ] Document `--image-folder` and `--image-prefix` options
-- [ ] Add library usage example with `outputStructure`
+- [x] Add flat mode to CLI options table
+- [x] Add flat mode usage example
+- [x] Document `--image-folder` and `--image-prefix` options
+- [x] Add library usage example with `outputStructure`
 
 #### Step 6.3: Update CHANGELOG
 - [ ] Document new feature in Unreleased/next version section
