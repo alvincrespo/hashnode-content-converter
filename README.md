@@ -5,7 +5,7 @@
 
 Convert Hashnode blog exports to framework-agnostic Markdown with YAML frontmatter. This TypeScript package transforms your Hashnode content into portable Markdown files with proper frontmatter, localized images, and cleaned formatting—ready for any static site generator or blog platform.
 
-> **Status**: Production-ready with 99.36% test coverage. All core components, CLI, and programmatic API are complete.
+> **Status**: Production-ready with 99.5% test coverage (484 tests). All core components, CLI, and programmatic API are complete.
 
 ## Table of Contents
 
@@ -109,7 +109,7 @@ output/
 
 #### Flat Mode (`--flat`)
 
-Standalone `.md` files with images in a shared sibling folder:
+Standalone `.md` files with images in a shared sibling folder. The image folder (`_images/` by default) is created as a sibling of the output directory — for example, if `--output` is `./src/_posts`, images go to `./src/_images/`.
 
 ```bash
 npx @alvincrespo/hashnode-content-converter convert \
@@ -120,13 +120,15 @@ npx @alvincrespo/hashnode-content-converter convert \
 
 ```
 src/
-├── _posts/
+├── _posts/          ← output directory (--output)
 │   ├── my-first-post.md      # Image refs: /images/image.png
 │   └── my-second-post.md
-└── _images/
+└── _images/         ← sibling image folder
     ├── image.png
     └── screenshot.png
 ```
+
+> **Note**: The default image folder name (`_images`) and path prefix (`/images`) are intentionally different. The folder name is the directory created on disk; the prefix is the URL path used in markdown image references. Configure your web server or static site generator to serve `_images/` at `/images`, or use `--image-folder` and `--image-prefix` to align them.
 
 Customize the image folder and path prefix for your framework:
 
