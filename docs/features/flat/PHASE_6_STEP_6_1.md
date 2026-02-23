@@ -69,11 +69,11 @@ export type {
 
 ### Step 0: Create Feature Branch
 
-**Action**: Create a new branch `flat-output-mode/phase-6-step-1-1` off the current `feature/flat-output-mode` branch.
+**Action**: Create a new branch `flat-output-mode/phase-6-step-6-1` off the current `feature/flat-output-mode` branch.
 
 ```bash
 git checkout feature/flat-output-mode
-git checkout -b flat-output-mode/phase-6-step-1-1
+git checkout -b flat-output-mode/phase-6-step-6-1
 ```
 
 ### Step 1: Replace Wildcard Export with Explicit Named Exports
