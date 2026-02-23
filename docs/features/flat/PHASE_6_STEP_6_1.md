@@ -166,15 +166,15 @@ nvm use $(cat .node-version) && npm test
 ## Success Criteria
 
 ### Functional Requirements
-- [ ] `OutputStructure` is importable from `@alvincrespo/hashnode-content-converter`
-- [ ] `ImageProcessorContext` is importable from `@alvincrespo/hashnode-content-converter`
-- [ ] All previously exported items from `converter-options.ts` remain accessible
-- [ ] No duplicate exports or TypeScript errors
+- [x] `OutputStructure` is importable from `@alvincrespo/hashnode-content-converter`
+- [x] `ImageProcessorContext` is importable from `@alvincrespo/hashnode-content-converter`
+- [x] All previously exported items from `converter-options.ts` remain accessible
+- [x] No duplicate exports or TypeScript errors
 
 ### Non-Functional Requirements
-- [ ] TypeScript compilation passes (`npm run type-check`)
-- [ ] Build succeeds (`npm run build`)
-- [ ] All existing tests pass (`npm test`)
+- [x] TypeScript compilation passes (`npm run type-check`)
+- [x] Build succeeds (`npm run build`)
+- [x] All existing tests pass (`npm test`)
 
 ---
 
@@ -190,19 +190,19 @@ nvm use $(cat .node-version) && npm test
 ## Implementation Checklist
 
 ### Phase 0: Branch Setup
-- [ ] Create branch `flat-output-mode/phase-6-step-1-1` off `feature/flat-output-mode`
+- [x] Create branch `flat-output-mode/phase-6-step-1-1` off `feature/flat-output-mode`
 
 ### Phase 1: Core Implementation
-- [ ] Replace `export * from './types/converter-options.js'` with explicit named exports in `src/index.ts`
+- [x] Replace `export * from './types/converter-options.js'` with explicit named exports in `src/index.ts`
 
 ### Phase 2: Verification
-- [ ] Run type-check
-- [ ] Run build
-- [ ] Run tests
+- [x] Run type-check
+- [x] Run build
+- [x] Run tests
 
 ### Phase 3: Documentation
-- [ ] Mark Step 6.1 checkboxes in IMPLEMENTATION_FLAT.md
-- [ ] Update this plan status to ✅ IMPLEMENTED
+- [x] Mark Step 6.1 checkboxes in IMPLEMENTATION_FLAT.md
+- [x] Update this plan status to ✅ IMPLEMENTED
 
 ---
 
