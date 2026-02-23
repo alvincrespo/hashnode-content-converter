@@ -7,6 +7,23 @@ Convert Hashnode blog exports to framework-agnostic Markdown with YAML frontmatt
 
 > **Status**: Production-ready with 99.36% test coverage. All core components, CLI, and programmatic API are complete.
 
+## Table of Contents
+
+- [Features](#features)
+- [Installation](#installation)
+- [Usage](#usage)
+  - [CLI](#cli)
+  - [Output Modes](#output-modes)
+  - [Programmatic API](#programmatic-api)
+- [Current Status](#current-status)
+- [Architecture](#architecture)
+- [Development](#development)
+- [Releasing](#releasing)
+- [Migrating from convert-hashnode.js](#migrating-from-convert-hashnodejs)
+- [Documentation](#documentation)
+- [Contributing](#contributing)
+- [License](#license)
+
 ## Features
 
 - **Metadata Extraction**: Parse Hashnode exports and extract essential post metadata (title, slug, dates, tags, cover image)
