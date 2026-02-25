@@ -467,7 +467,20 @@ export type { CLIOptions, ValidatedOptions };
 
 // Parse arguments and execute only when run directly (not imported)
 // ESM equivalent of require.main === module
-const isMainModule = process.argv[1] === fileURLToPath(import.meta.url);
-if (isMainModule) {
+// Use fs.realpathSync to resolve symlinks (e.g., npm link creates symlinked binaries)
+function checkIsMainModule(): boolean {
+  try {
+    const argv1 = fs.realpathSync(process.argv[1]);
+    const thisFile = fs.realpathSync(fileURLToPath(import.meta.url));
+    // Guard against mocked fs returning undefined in test environments
+    if (!argv1 || !thisFile) return false;
+    return argv1 === thisFile;
+  } catch {
+    // Fallback to direct comparison if realpathSync fails
+    return process.argv[1] === fileURLToPath(import.meta.url);
+  }
+}
+
+if (checkIsMainModule()) {
   program.parse();
 }
