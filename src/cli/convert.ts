@@ -6,6 +6,8 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Converter } from '../converter.js';
+import type { ConverterDependencies } from '../converter.js';
+import { DEFAULT_IMAGE_FOLDER } from '../types/converter-options.js';
 import type { ConversionOptions, LoggerConfig } from '../types/converter-options.js';
 import type { ConversionResult } from '../types/conversion-result.js';
 
@@ -33,6 +35,12 @@ interface CLIOptions {
   verbose: boolean;
   /** Suppress progress output */
   quiet: boolean;
+  /** Enable flat output mode ({slug}.md instead of {slug}/index.md) */
+  flat: boolean;
+  /** Image folder name in flat mode (default: _images) */
+  imageFolder?: string;
+  /** Image path prefix in flat mode (default: /images) */
+  imagePrefix?: string;
 }
 
 /**
@@ -137,6 +145,78 @@ export function validateLogFilePath(logFilePath: string | undefined): string | u
 export function validateMutuallyExclusiveFlags(verbose: boolean, quiet: boolean): void {
   if (verbose && quiet) {
     throw new Error('Cannot use both --verbose and --quiet options');
+  }
+}
+
+/**
+ * Validate image folder name for security.
+ * Prevents path traversal, absolute paths, and shell metacharacters.
+ *
+ * @param folder - The image folder name to validate
+ * @throws {Error} If the folder name is invalid
+ */
+export function validateImageFolder(folder: string): void {
+  // Prevent empty folder name
+  if (folder.trim().length === 0) {
+    throw new Error(
+      `Invalid --image-folder: folder name cannot be empty.`
+    );
+  }
+
+  // Prevent absolute paths - image folder must be relative
+  if (path.isAbsolute(folder)) {
+    throw new Error(
+      `Invalid --image-folder: "${folder}". ` +
+      `Must be a relative path (e.g., "_images", "assets").`
+    );
+  }
+
+  // Prevent path traversal attacks
+  if (folder.includes('..')) {
+    throw new Error(
+      `Invalid --image-folder: "${folder}". ` +
+      `Path traversal (..) is not allowed for security reasons.`
+    );
+  }
+
+  // Reject characters that could be misinterpreted in shell contexts
+  // (< > | * ? for globbing/redirection/piping, : " for quoting),
+  // plus control characters (U+0000–U+001F) which are not valid in filenames.
+  const hasInvalidChars = /[<>:"|?*]/.test(folder);
+  const hasControlChars = [...folder].some(c => c.charCodeAt(0) <= 0x1f);
+  if (hasInvalidChars || hasControlChars) {
+    throw new Error(
+      `Invalid --image-folder: "${folder}". ` +
+      `Contains invalid filesystem characters.`
+    );
+  }
+}
+
+/**
+ * Validate image path prefix for markdown URLs.
+ * Ensures prefix starts with / for absolute URLs and doesn't contain injection characters.
+ *
+ * @param prefix - The image path prefix to validate
+ * @throws {Error} If the prefix is invalid
+ */
+export function validateImagePrefix(prefix: string): void {
+  // imagePrefix must start with / for absolute URLs in markdown
+  if (!prefix.startsWith('/')) {
+    throw new Error(
+      `Invalid --image-prefix: "${prefix}". ` +
+      `Must start with "/" for absolute URLs (e.g., "/images", "/assets/images").`
+    );
+  }
+
+  // Allowlist: only permit characters safe for URL paths and markdown link
+  // destinations. The prefix is interpolated into ![alt](prefix/file.png),
+  // so characters like ), whitespace, or control chars could break markdown
+  // parsing or enable injection.
+  if (!/^\/[A-Za-z0-9._\-/]+$/.test(prefix)) {
+    throw new Error(
+      `Invalid --image-prefix: "${prefix}". ` +
+      `Only alphanumeric characters, hyphens, underscores, dots, and forward slashes are allowed.`
+    );
   }
 }
 
@@ -262,11 +342,49 @@ async function runConvert(options: CLIOptions): Promise<void> {
       console.log('\nHashnode Content Converter');
       console.log(`Export:  ${exportPath}`);
       console.log(`Output:  ${outputPath}`);
+      if (options.flat) {
+        const imageFolder = options.imageFolder ?? DEFAULT_IMAGE_FOLDER;
+        console.log(`Mode:    flat (images -> ../${imageFolder}/)`);
+      } else {
+        console.log(`Mode:    nested ({slug}/index.md)`);
+      }
       if (logFilePath) {
         console.log(`Log:     ${logFilePath}`);
       }
       console.log(`Skip existing: ${options.skipExisting}`);
       console.log('');
+    }
+
+    // Warn if flat-mode-only options are used without --flat
+    if (!options.flat) {
+      if (options.imageFolder) {
+        console.warn('Warning: --image-folder is ignored without --flat');
+      }
+      if (options.imagePrefix) {
+        console.warn('Warning: --image-prefix is ignored without --flat');
+      }
+    }
+
+    // Build converter dependencies with output structure config
+    let converterDeps: ConverterDependencies | undefined;
+    if (options.flat) {
+      // Validate user-provided values for security
+      if (options.imageFolder) {
+        validateImageFolder(options.imageFolder);
+      }
+      if (options.imagePrefix) {
+        validateImagePrefix(options.imagePrefix);
+      }
+
+      converterDeps = {
+        config: {
+          outputStructure: {
+            mode: 'flat',
+            imageFolderName: options.imageFolder,   // undefined uses default '_images'
+            imagePathPrefix: options.imagePrefix,    // undefined uses default '/images'
+          },
+        },
+      };
     }
 
     // Build conversion options
@@ -283,9 +401,9 @@ async function runConvert(options: CLIOptions): Promise<void> {
       conversionOptions.loggerConfig = loggerConfig;
     }
 
-    // Create converter with progress callback
+    // Create converter with progress callback and optional flat mode config
     const progressCallback = createProgressCallback(options.quiet, options.verbose);
-    const converter = Converter.withProgress(progressCallback);
+    const converter = Converter.withProgress(progressCallback, converterDeps);
 
     // Run conversion
     const result = await converter.convertAllPosts(exportPath, outputPath, conversionOptions);
@@ -336,6 +454,9 @@ program
   .option('--no-skip-existing', 'Overwrite posts that already exist')
   .option('-v, --verbose', 'Enable verbose output', false)
   .option('-q, --quiet', 'Suppress progress output (only show summary)', false)
+  .option('-f, --flat', 'Use flat output mode ({slug}.md instead of {slug}/index.md)', false)
+  .option('--image-folder <name>', 'Image folder name in flat mode (default: _images)')
+  .option('--image-prefix <prefix>', 'Image path prefix in flat mode (default: /images)')
   .action(async (options: CLIOptions) => {
     await runConvert(options);
   });
@@ -346,7 +467,20 @@ export type { CLIOptions, ValidatedOptions };
 
 // Parse arguments and execute only when run directly (not imported)
 // ESM equivalent of require.main === module
-const isMainModule = process.argv[1] === fileURLToPath(import.meta.url);
-if (isMainModule) {
+// Use fs.realpathSync to resolve symlinks (e.g., npm link creates symlinked binaries)
+function checkIsMainModule(): boolean {
+  try {
+    const argv1 = fs.realpathSync(process.argv[1]);
+    const thisFile = fs.realpathSync(fileURLToPath(import.meta.url));
+    // Guard against mocked fs returning undefined in test environments
+    if (!argv1 || !thisFile) return false;
+    return argv1 === thisFile;
+  } catch {
+    // Fallback to direct comparison if realpathSync fails
+    return process.argv[1] === fileURLToPath(import.meta.url);
+  }
+}
+
+if (checkIsMainModule()) {
   program.parse();
 }

@@ -8,6 +8,7 @@ import { ImageProcessor } from '../../src/processors/image-processor.js';
 import { FrontmatterGenerator } from '../../src/processors/frontmatter-generator.js';
 import { FileWriter } from '../../src/services/file-writer.js';
 import { Logger } from '../../src/services/logger.js';
+import { Post } from '../../src/models/post.js';
 import type { HashnodePost } from '../../src/types/hashnode-schema.js';
 // Mock fs module
 vi.mock('node:fs');
@@ -79,6 +80,13 @@ describe('Converter', () => {
 
     mockImageProcessor = {
       process: vi.fn().mockResolvedValue({
+        markdown: '# Test Content',
+        imagesProcessed: 0,
+        imagesDownloaded: 0,
+        imagesSkipped: 0,
+        errors: [],
+      }),
+      processWithContext: vi.fn().mockResolvedValue({
         markdown: '# Test Content',
         imagesProcessed: 0,
         imagesDownloaded: 0,
@@ -275,6 +283,64 @@ describe('Converter', () => {
       expect(mockLogger.info).toHaveBeenCalledWith(
         expect.stringContaining('Skipped')
       );
+    });
+
+    it('should emit skip event with correct nested path', async () => {
+      vi.mocked(mockFileWriter.postExists).mockReturnValue(true);
+      const completedHandler = vi.fn();
+      converter.on('conversion-completed', completedHandler);
+
+      await converter.convertAllPosts('/path/to/export.json', '/output', {
+        skipExisting: true,
+      });
+
+      expect(completedHandler).toHaveBeenCalledWith(
+        expect.objectContaining({
+          result: expect.objectContaining({
+            slug: 'test-post',
+            outputPath: path.join('/output', 'test-post', 'index.md'),
+            success: true,
+          }),
+        })
+      );
+    });
+
+    it('should fall back to nested format when Post.getFilePath fails', async () => {
+      // NOTE: This tests defensive error handling in getSkipOutputPath().
+      // Post.getFilePath() is mocked to throw, simulating an unexpected error.
+      // This ensures the fallback path works even if Post encounters issues.
+      vi.mocked(mockFileWriter.postExists).mockReturnValue(true);
+
+      const getFilePathSpy = vi.spyOn(Post.prototype, 'getFilePath')
+        .mockImplementationOnce(() => {
+          throw new Error('Simulated getFilePath failure');
+        });
+
+      const completedHandler = vi.fn();
+      converter.on('conversion-completed', completedHandler);
+
+      await converter.convertAllPosts('/path/to/export.json', '/output', {
+        skipExisting: true,
+      });
+
+      // Should log warning about fallback
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to compute skip path for slug "test-post"')
+      );
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('Using nested format fallback')
+      );
+
+      // Should fall back to nested format
+      expect(completedHandler).toHaveBeenCalledWith(
+        expect.objectContaining({
+          result: expect.objectContaining({
+            outputPath: path.join('/output', 'test-post', 'index.md'),
+          }),
+        })
+      );
+
+      getFilePathSpy.mockRestore();
     });
   });
 
@@ -709,6 +775,288 @@ describe('Converter', () => {
         'test-post',
         expect.any(String),
         '# Content with local images'
+      );
+    });
+
+    it('should create new ImageProcessor with custom downloadOptions in nested mode', async () => {
+      // Spy on ImageProcessor.prototype.process to verify new instance is called
+      const processSpy = vi.spyOn(ImageProcessor.prototype, 'process')
+        .mockResolvedValue({
+          markdown: '# Test Content',
+          imagesProcessed: 0,
+          imagesDownloaded: 0,
+          imagesSkipped: 0,
+          errors: [],
+        });
+
+      const customOptions = {
+        downloadOptions: {
+          maxRetries: 5,
+          downloadDelayMs: 200,
+        },
+      };
+
+      // Clear the mock to ensure we can track calls
+      vi.mocked(mockImageProcessor.process).mockClear();
+
+      const result = await converter.convertPost(samplePost, '/output', customOptions);
+
+      // When downloadOptions is provided, a new ImageProcessor is created
+      // So the injected mock should NOT be called
+      expect(mockImageProcessor.process).not.toHaveBeenCalled();
+
+      // But the new instance's process method should be called
+      expect(processSpy).toHaveBeenCalled();
+
+      // Verify successful conversion
+      expect(result.success).toBe(true);
+
+      processSpy.mockRestore();
+    });
+  });
+
+  describe('convertPost - Flat Output Mode', () => {
+    it('should use processWithContext in flat mode', async () => {
+      const flatConverter = new Converter({
+        postParser: mockPostParser,
+        markdownTransformer: mockMarkdownTransformer,
+        imageProcessor: mockImageProcessor,
+        frontmatterGenerator: mockFrontmatterGenerator,
+        fileWriter: mockFileWriter,
+        config: { outputStructure: { mode: 'flat' } },
+      });
+
+      await flatConverter.convertPost(samplePost, '/blog/_posts');
+
+      expect(mockImageProcessor.processWithContext).toHaveBeenCalledWith(
+        '# Test Content',
+        expect.objectContaining({
+          imageDir: '/blog/_images',
+          imagePathPrefix: '/images',
+        })
+      );
+      expect(mockImageProcessor.process).not.toHaveBeenCalled();
+    });
+
+    it('should respect custom imageFolderName in flat mode', async () => {
+      const flatConverter = new Converter({
+        postParser: mockPostParser,
+        markdownTransformer: mockMarkdownTransformer,
+        imageProcessor: mockImageProcessor,
+        frontmatterGenerator: mockFrontmatterGenerator,
+        fileWriter: mockFileWriter,
+        config: { outputStructure: { mode: 'flat', imageFolderName: 'assets' } },
+      });
+
+      await flatConverter.convertPost(samplePost, '/src/_posts');
+
+      expect(mockImageProcessor.processWithContext).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          imageDir: '/src/assets',
+          imagePathPrefix: '/images',
+        })
+      );
+    });
+
+    it('should respect custom imagePathPrefix in flat mode', async () => {
+      const flatConverter = new Converter({
+        postParser: mockPostParser,
+        markdownTransformer: mockMarkdownTransformer,
+        imageProcessor: mockImageProcessor,
+        frontmatterGenerator: mockFrontmatterGenerator,
+        fileWriter: mockFileWriter,
+        config: { outputStructure: { mode: 'flat', imagePathPrefix: '/static/img' } },
+      });
+
+      await flatConverter.convertPost(samplePost, '/blog/_posts');
+
+      expect(mockImageProcessor.processWithContext).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          imagePathPrefix: '/static/img',
+        })
+      );
+    });
+
+    it('should create FileWriter with flat mode config', async () => {
+      const flatConverter = new Converter({
+        postParser: mockPostParser,
+        markdownTransformer: mockMarkdownTransformer,
+        imageProcessor: mockImageProcessor,
+        frontmatterGenerator: mockFrontmatterGenerator,
+        fileWriter: mockFileWriter,
+        config: { outputStructure: { mode: 'flat' } },
+      });
+
+      // Mock fs.existsSync to return false for the flat mode file check
+      // (FileWriter checks if {slug}.md exists in flat mode)
+      vi.mocked(fs.existsSync).mockImplementation((path) => {
+        const pathStr = String(path);
+        // Return false for flat mode file path check
+        if (pathStr.includes('test-post.md')) {
+          return false;
+        }
+        // Return true for directory existence checks
+        return true;
+      });
+
+      const result = await flatConverter.convertPost(samplePost, '/blog/_posts');
+
+      // FileWriter configured at construction with flat mode
+      expect(result.success).toBe(true);
+      expect(result.outputPath).toBeTruthy();
+
+      // Restore default mock behavior
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+    });
+
+    it('should use nested mode by default (backward compatibility)', async () => {
+      // No outputStructure option
+      await converter.convertPost(samplePost, '/output');
+
+      expect(mockImageProcessor.process).toHaveBeenCalledWith(
+        '# Test Content',
+        '/output/test-post'
+      );
+      expect(mockImageProcessor.processWithContext).not.toHaveBeenCalled();
+    });
+
+    it('should use nested mode when explicitly specified', async () => {
+      const nestedConverter = new Converter({
+        postParser: mockPostParser,
+        markdownTransformer: mockMarkdownTransformer,
+        imageProcessor: mockImageProcessor,
+        frontmatterGenerator: mockFrontmatterGenerator,
+        fileWriter: mockFileWriter,
+        config: { outputStructure: { mode: 'nested' } },
+      });
+
+      await nestedConverter.convertPost(samplePost, '/output');
+
+      expect(mockImageProcessor.process).toHaveBeenCalledWith(
+        '# Test Content',
+        '/output/test-post'
+      );
+      expect(mockImageProcessor.processWithContext).not.toHaveBeenCalled();
+    });
+
+    it('should handle image directory creation errors in flat mode', async () => {
+      const flatConverter = new Converter({
+        postParser: mockPostParser,
+        markdownTransformer: mockMarkdownTransformer,
+        imageProcessor: mockImageProcessor,
+        frontmatterGenerator: mockFrontmatterGenerator,
+        fileWriter: mockFileWriter,
+        config: { outputStructure: { mode: 'flat' } },
+      });
+
+      // Mock fs.existsSync to return false (directory doesn't exist)
+      vi.mocked(fs.existsSync).mockReturnValue(false);
+
+      // Mock fs.mkdirSync to throw an error
+      vi.mocked(fs.mkdirSync).mockImplementationOnce(() => {
+        throw new Error('Permission denied');
+      });
+
+      const result = await flatConverter.convertPost(samplePost, '/blog/_posts');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Permission denied');
+
+      // Restore fs.mkdirSync to default behavior for other tests
+      vi.mocked(fs.mkdirSync).mockReturnValue(undefined);
+    });
+
+    it('should throw validation error for non-nested outputDir in flat mode', async () => {
+      const flatConverter = new Converter({
+        postParser: mockPostParser,
+        markdownTransformer: mockMarkdownTransformer,
+        imageProcessor: mockImageProcessor,
+        frontmatterGenerator: mockFrontmatterGenerator,
+        fileWriter: mockFileWriter,
+        config: { outputStructure: { mode: 'flat' } },
+      });
+
+      const result = await flatConverter.convertPost(samplePost, '/output');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Invalid outputDir for flat mode');
+      expect(result.error).toContain('nested directory structure');
+    });
+
+    it('should create new ImageProcessor with custom downloadOptions in flat mode', async () => {
+      const flatConverter = new Converter({
+        postParser: mockPostParser,
+        markdownTransformer: mockMarkdownTransformer,
+        imageProcessor: mockImageProcessor,
+        frontmatterGenerator: mockFrontmatterGenerator,
+        fileWriter: mockFileWriter,
+        config: { outputStructure: { mode: 'flat' } },
+      });
+
+      // Spy on ImageProcessor constructor to verify new instance is created
+      const constructorSpy = vi.spyOn(ImageProcessor.prototype, 'processWithContext')
+        .mockResolvedValue({
+          markdown: '# Test Content',
+          imagesProcessed: 0,
+          imagesDownloaded: 0,
+          imagesSkipped: 0,
+          errors: [],
+        });
+
+      const customOptions = {
+        downloadOptions: {
+          maxRetries: 5,
+          downloadDelayMs: 200,
+        },
+      };
+
+      // Clear the mock to ensure we can track calls
+      vi.mocked(mockImageProcessor.processWithContext).mockClear();
+
+      const result = await flatConverter.convertPost(samplePost, '/blog/_posts', customOptions);
+
+      // When downloadOptions is provided, a new ImageProcessor is created
+      // So the injected mock should NOT be called
+      expect(mockImageProcessor.processWithContext).not.toHaveBeenCalled();
+
+      // But the new instance's processWithContext should be called
+      expect(constructorSpy).toHaveBeenCalled();
+
+      // Verify successful conversion
+      expect(result.success).toBe(true);
+
+      constructorSpy.mockRestore();
+    });
+
+    it('should emit skip event with correct flat path when post exists', async () => {
+      const flatConverter = new Converter({
+        postParser: mockPostParser,
+        markdownTransformer: mockMarkdownTransformer,
+        imageProcessor: mockImageProcessor,
+        frontmatterGenerator: mockFrontmatterGenerator,
+        fileWriter: mockFileWriter,
+        logger: mockLogger,
+        config: { outputStructure: { mode: 'flat' } },
+      });
+
+      vi.mocked(mockFileWriter.postExists).mockReturnValue(true);
+      const completedHandler = vi.fn();
+      flatConverter.on('conversion-completed', completedHandler);
+
+      await flatConverter.convertAllPosts('/path/to/export.json', '/blog/_posts', {
+        skipExisting: true,
+      });
+
+      expect(completedHandler).toHaveBeenCalledWith(
+        expect.objectContaining({
+          result: expect.objectContaining({
+            slug: 'test-post',
+            outputPath: path.join('/blog/_posts', 'test-post.md'),
+            success: true,
+          }),
+        })
       );
     });
   });

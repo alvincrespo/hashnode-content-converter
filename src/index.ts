@@ -40,7 +40,14 @@ export type { ConverterDependencies } from './converter.js';
 // Type Definitions
 // -----------------------------------------------------------------------------
 export * from './types/hashnode-schema.js';
-export * from './types/converter-options.js';
+export type {
+  ConversionOptions,
+  ConverterConfig,
+  ImageDownloadOptions,
+  LoggerConfig,
+  OutputStructure,
+} from './types/converter-options.js';
+export { DEFAULT_IMAGE_FOLDER } from './types/converter-options.js';
 export * from './types/conversion-result.js';
 export * from './types/converter-events.js';
 
@@ -55,6 +62,12 @@ export type {
 
 export { FileWriter, FileWriteError } from './services/file-writer.js';
 export type { FileWriterConfig } from './services/file-writer.js';
+
+// -----------------------------------------------------------------------------
+// Models
+// -----------------------------------------------------------------------------
+export { Post, PostValidationError } from './models/post.js';
+export type { PostConfig, OutputMode } from './models/post.js';
 
 export { Logger } from './services/logger.js';
 
@@ -71,4 +84,5 @@ export type {
   ImageProcessorOptions,
   ImageProcessingResult,
   ImageProcessingError,
+  ImageProcessorContext,
 } from './types/image-processor.js';
