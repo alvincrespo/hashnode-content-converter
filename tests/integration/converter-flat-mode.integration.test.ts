@@ -1,8 +1,9 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
 import { Converter } from '../../src/converter.js';
+import { ImageDownloader } from '../../src/services/image-downloader.js';
 import type { HashnodePost } from '../../src/types/hashnode-schema.js';
 
 // ============================================================================
@@ -11,9 +12,9 @@ import type { HashnodePost } from '../../src/types/hashnode-schema.js';
 // This file does NOT mock fs - all filesystem operations are real.
 // Tests verify the complete end-to-end conversion pipeline for flat output mode.
 //
-// Note: These tests focus on file structure and directory creation validation.
-// Image downloads use real network calls (may fail in CI), so assertions focus
-// on directory structure rather than downloaded file content.
+// ImageDownloader.download is mocked at the network boundary to avoid real
+// HTTPS calls. All other pipeline behavior (directory creation, marker files,
+// path rewriting, file writing) uses real code paths.
 // ============================================================================
 
 /**
@@ -59,9 +60,24 @@ describe('Converter - Flat Output Mode Integration Tests', () => {
 
     // Export path (will be created per-test with specific data)
     exportPath = path.join(tempDir, 'export.json');
+
+    // Mock network layer to avoid real HTTPS downloads while keeping
+    // all other pipeline behavior (directory creation, markers, path rewriting) real
+    vi.spyOn(ImageDownloader.prototype, 'download').mockImplementation(
+      async (_url: string, filepath: string) => {
+        const dir = path.dirname(filepath);
+        if (!fs.existsSync(dir)) {
+          fs.mkdirSync(dir, { recursive: true });
+        }
+        fs.writeFileSync(filepath, Buffer.from('fake-image-data'));
+        return { success: true };
+      }
+    );
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
+
     // Cleanup temp directory (force: true ensures cleanup even on test failure)
     if (fs.existsSync(tempDir)) {
       fs.rmSync(tempDir, { recursive: true, force: true });
@@ -139,8 +155,8 @@ describe('Converter - Flat Output Mode Integration Tests', () => {
         createTestPost({
           slug: 'post-with-image',
           title: 'Post With Image',
-          contentMarkdown: '![alt text](https://cdn.hashnode.com/res/hashnode/image/upload/v123/test-image-abc123.png)',
-          content: '<p><img src="https://cdn.hashnode.com/res/hashnode/image/upload/v123/test-image-abc123.png" alt="alt text"></p>',
+          contentMarkdown: '![alt text](https://cdn.hashnode.com/res/hashnode/image/upload/v123/550e8400-e29b-41d4-a716-446655440000.png)',
+          content: '<p><img src="https://cdn.hashnode.com/res/hashnode/image/upload/v123/550e8400-e29b-41d4-a716-446655440000.png" alt="alt text"></p>',
           brief: 'Test post with image',
         }),
       ],
@@ -152,20 +168,28 @@ describe('Converter - Flat Output Mode Integration Tests', () => {
       skipExisting: false,
     });
 
-    // Assert - Image directory structure exists (even if download fails)
+    // Assert - Image directory structure
     const imageDir = path.join(outputDir, '..', '_images');
     expect(fs.existsSync(imageDir)).toBe(true);
 
-    // Assert - Markers directory exists (created on any image processing attempt)
+    // Assert - Image file was downloaded
+    const imageFile = path.join(imageDir, '550e8400-e29b-41d4-a716-446655440000.png');
+    expect(fs.existsSync(imageFile)).toBe(true);
+
+    // Assert - Marker file created for successful download
     const markersDir = path.join(imageDir, '.downloaded-markers');
     expect(fs.existsSync(markersDir)).toBe(true);
+    expect(fs.existsSync(path.join(markersDir, '550e8400-e29b-41d4-a716-446655440000.png.marker'))).toBe(true);
 
     // Assert - No post directory created (flat mode)
     const postDir = path.join(outputDir, 'post-with-image');
     expect(fs.existsSync(postDir)).toBe(false);
 
-    // Assert - Post file created
-    expect(fs.existsSync(path.join(outputDir, 'post-with-image.md'))).toBe(true);
+    // Assert - Post file created with rewritten image path
+    const postFile = path.join(outputDir, 'post-with-image.md');
+    expect(fs.existsSync(postFile)).toBe(true);
+    const content = fs.readFileSync(postFile, 'utf8');
+    expect(content).toContain('![alt text](/images/550e8400-e29b-41d4-a716-446655440000.png)');
   });
 
   it('should use /images prefix in markdown references', async () => {
@@ -181,8 +205,8 @@ describe('Converter - Flat Output Mode Integration Tests', () => {
         createTestPost({
           slug: 'image-post',
           title: 'Image Post',
-          contentMarkdown: 'Text before ![alt text](https://cdn.hashnode.com/res/hashnode/image/upload/v1/xyz-789.jpg) text after',
-          content: '<p>Text before <img src="https://cdn.hashnode.com/res/hashnode/image/upload/v1/xyz-789.jpg" alt="alt text"> text after</p>',
+          contentMarkdown: 'Text before ![alt text](https://cdn.hashnode.com/res/hashnode/image/upload/v1/660e8400-e29b-41d4-a716-446655440001.jpg) text after',
+          content: '<p>Text before <img src="https://cdn.hashnode.com/res/hashnode/image/upload/v1/660e8400-e29b-41d4-a716-446655440001.jpg" alt="alt text"> text after</p>',
         }),
       ],
     };
@@ -196,12 +220,13 @@ describe('Converter - Flat Output Mode Integration Tests', () => {
     // Assert - Read markdown content
     const content = fs.readFileSync(path.join(outputDir, 'image-post.md'), 'utf8');
 
-    // Assert - Verify flat mode does NOT use relative paths
-    // In flat mode, images should use absolute prefix (if downloaded successfully)
-    // or keep CDN URL (if download failed) - but never relative ./paths
-    expect(content).not.toContain('![alt text](./xyz-789.jpg)');
+    // Assert - Flat mode rewrites image URLs with /images/ prefix
+    expect(content).toContain('![alt text](/images/660e8400-e29b-41d4-a716-446655440001.jpg)');
 
-    // Assert - File was created successfully
+    // Assert - Does NOT use relative paths (that's nested mode)
+    expect(content).not.toContain('![alt text](./660e8400-e29b-41d4-a716-446655440001.jpg)');
+
+    // Assert - Surrounding text preserved
     expect(content).toContain('Text before');
     expect(content).toContain('text after');
   });
@@ -278,8 +303,8 @@ describe('Converter - Flat Output Mode Integration Tests', () => {
         createTestPost({
           slug: 'custom-folder-post',
           title: 'Custom Folder Post',
-          contentMarkdown: '![img](https://cdn.hashnode.com/res/hashnode/image/upload/v1/custom-123.png)',
-          content: '<p><img src="https://cdn.hashnode.com/res/hashnode/image/upload/v1/custom-123.png" alt="img"></p>',
+          contentMarkdown: '![img](https://cdn.hashnode.com/res/hashnode/image/upload/v1/770e8400-e29b-41d4-a716-446655440002.png)',
+          content: '<p><img src="https://cdn.hashnode.com/res/hashnode/image/upload/v1/770e8400-e29b-41d4-a716-446655440002.png" alt="img"></p>',
         }),
       ],
     };
@@ -290,9 +315,10 @@ describe('Converter - Flat Output Mode Integration Tests', () => {
       skipExisting: false,
     });
 
-    // Assert - Custom image directory exists
+    // Assert - Custom image directory exists with downloaded image
     const customImageDir = path.join(outputDir, '..', 'assets');
     expect(fs.existsSync(customImageDir)).toBe(true);
+    expect(fs.existsSync(path.join(customImageDir, '770e8400-e29b-41d4-a716-446655440002.png'))).toBe(true);
 
     // Assert - Default _images directory NOT created
     const defaultImageDir = path.join(outputDir, '..', '_images');
@@ -301,6 +327,7 @@ describe('Converter - Flat Output Mode Integration Tests', () => {
     // Assert - Markers directory created in custom location
     const markersDir = path.join(customImageDir, '.downloaded-markers');
     expect(fs.existsSync(markersDir)).toBe(true);
+    expect(fs.existsSync(path.join(markersDir, '770e8400-e29b-41d4-a716-446655440002.png.marker'))).toBe(true);
 
     // Assert - Post file created
     expect(fs.existsSync(path.join(outputDir, 'custom-folder-post.md'))).toBe(true);
@@ -322,8 +349,8 @@ describe('Converter - Flat Output Mode Integration Tests', () => {
         createTestPost({
           slug: 'custom-prefix-post',
           title: 'Custom Prefix Post',
-          contentMarkdown: '![img](https://cdn.hashnode.com/res/hashnode/image/upload/v1/prefix-456.jpg)',
-          content: '<p><img src="https://cdn.hashnode.com/res/hashnode/image/upload/v1/prefix-456.jpg" alt="img"></p>',
+          contentMarkdown: '![img](https://cdn.hashnode.com/res/hashnode/image/upload/v1/880e8400-e29b-41d4-a716-446655440003.jpg)',
+          content: '<p><img src="https://cdn.hashnode.com/res/hashnode/image/upload/v1/880e8400-e29b-41d4-a716-446655440003.jpg" alt="img"></p>',
         }),
       ],
     };
@@ -343,12 +370,16 @@ describe('Converter - Flat Output Mode Integration Tests', () => {
       'utf8'
     );
 
-    // Assert - Verify NOT using relative path (flat mode should use absolute prefix)
-    expect(content).not.toContain('![img](./prefix-456.jpg)');
+    // Assert - Custom prefix used in markdown image references
+    expect(content).toContain('![img](/static/images/880e8400-e29b-41d4-a716-446655440003.jpg)');
 
-    // Assert - Custom image directory created
+    // Assert - Not using relative path (that's nested mode)
+    expect(content).not.toContain('![img](./880e8400-e29b-41d4-a716-446655440003.jpg)');
+
+    // Assert - Image file downloaded to _images directory
     const imageDir = path.join(outputDir, '..', '_images');
     expect(fs.existsSync(imageDir)).toBe(true);
+    expect(fs.existsSync(path.join(imageDir, '880e8400-e29b-41d4-a716-446655440003.jpg'))).toBe(true);
   });
 
   it('should maintain backwards compatibility in nested mode', async () => {
@@ -360,8 +391,8 @@ describe('Converter - Flat Output Mode Integration Tests', () => {
         createTestPost({
           slug: 'nested-post',
           title: 'Nested Post',
-          contentMarkdown: '![img](https://cdn.hashnode.com/res/hashnode/image/upload/v1/nested-789.png)',
-          content: '<p><img src="https://cdn.hashnode.com/res/hashnode/image/upload/v1/nested-789.png" alt="img"></p>',
+          contentMarkdown: '![img](https://cdn.hashnode.com/res/hashnode/image/upload/v1/990e8400-e29b-41d4-a716-446655440004.png)',
+          content: '<p><img src="https://cdn.hashnode.com/res/hashnode/image/upload/v1/990e8400-e29b-41d4-a716-446655440004.png" alt="img"></p>',
         }),
       ],
     };
@@ -377,6 +408,9 @@ describe('Converter - Flat Output Mode Integration Tests', () => {
     expect(fs.existsSync(postDir)).toBe(true);
     expect(fs.existsSync(path.join(postDir, 'index.md'))).toBe(true);
 
+    // Assert - Image downloaded into post directory (nested mode)
+    expect(fs.existsSync(path.join(postDir, '990e8400-e29b-41d4-a716-446655440004.png'))).toBe(true);
+
     // Assert - No flat file created
     expect(fs.existsSync(path.join(outputDir, 'nested-post.md'))).toBe(false);
 
@@ -386,7 +420,8 @@ describe('Converter - Flat Output Mode Integration Tests', () => {
     expect(content).toContain('title:');
     expect(content).toContain('Nested Post');
 
-    // Assert - Not using absolute /images/ prefix (that's flat mode only)
-    expect(content).not.toContain('/images/nested-789');
+    // Assert - Uses relative path (nested mode), not absolute /images/ prefix
+    expect(content).toContain('![img](./990e8400-e29b-41d4-a716-446655440004.png)');
+    expect(content).not.toContain('/images/990e8400-e29b-41d4-a716-446655440004');
   });
 });
